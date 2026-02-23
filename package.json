@@ -1,0 +1,35 @@
+{
+  "name": "slackline",
+  "version": "0.1.0",
+  "description": "CLI automation for Slack via Playwright",
+  "type": "module",
+  "bin": {
+    "slackline": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "auth:login": "tsx src/cli.ts auth login",
+    "daemon:start": "tsx src/cli.ts daemon start",
+    "daemon:stop": "tsx src/cli.ts daemon stop",
+    "daemon:status": "tsx src/cli.ts daemon status",
+    "messages": "tsx src/cli.ts messages",
+    "post": "tsx src/cli.ts post",
+    "profile": "tsx src/cli.ts profile",
+    "search": "tsx src/cli.ts search",
+    "playwright:install": "playwright install chrome"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "playwright": "^1.55.1",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/yargs": "^17.0.33",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
