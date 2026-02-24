@@ -1,17 +1,24 @@
+import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { getSlackProfile } from '../../service/slack/profile/get-profile.js'
+import type { GlobalOptions } from '../index.js'
 
 export const command = 'profile'
 export const aliases = ['whoami']
 export const describe = 'Show current Slack login status and profile details'
-export const builder = (yargs: any) =>
+
+interface ProfileOptions extends GlobalOptions {
+  json: boolean
+}
+
+export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs.option('json', {
     type: 'boolean',
     default: false,
     describe: 'Emit machine-readable JSON output',
   })
 
-export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const asJson = Boolean(argv.json)
+export async function handler(argv: ArgumentsCamelCase<ProfileOptions>): Promise<void> {
+  const { json: asJson } = argv
 
   const profile = await getSlackProfile({})
 

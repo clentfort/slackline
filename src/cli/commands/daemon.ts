@@ -1,19 +1,29 @@
+import type { Argv, ArgumentsCamelCase } from 'yargs'
 import {
   getSlackDaemonStatus,
   startSlackDaemon,
   stopSlackDaemon,
   type SlackDaemonStatus,
 } from '../../service/playwright/daemon-manager.js'
+import type { GlobalOptions } from '../index.js'
 
 export const command = 'daemon <action>'
 export const describe = 'Manage a long-running Chrome daemon for CLI reuse'
 
-export const builder = (yargs: any) =>
+interface DaemonOptions extends GlobalOptions {
+  action: 'start' | 'stop' | 'status'
+  headless: boolean
+  chromePath?: string
+  json: boolean
+}
+
+export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
     .positional('action', {
       type: 'string',
       choices: ['start', 'stop', 'status'] as const,
       describe: 'Daemon lifecycle action',
+      demandOption: true,
     })
     .option('headless', {
       type: 'boolean',
@@ -30,14 +40,10 @@ export const builder = (yargs: any) =>
       describe: 'Emit machine-readable JSON output',
     })
 
-export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const action = String(argv.action)
-  const cdpUrl = String(argv.cdpUrl)
-  const asJson = Boolean(argv.json)
+export async function handler(argv: ArgumentsCamelCase<DaemonOptions>): Promise<void> {
+  const { action, cdpUrl, json: asJson, headless, chromePath } = argv
 
   if (action === 'start') {
-    const headless = Boolean(argv.headless)
-    const chromePath = typeof argv.chromePath === 'string' ? argv.chromePath : undefined
     const status = await startSlackDaemon({
       cdpUrl,
       headless,

@@ -2,10 +2,19 @@ import { fileURLToPath } from 'node:url'
 
 import { hideBin } from 'yargs/helpers'
 import yargs from 'yargs/yargs'
+import type { Argv } from 'yargs'
 
 import { defaultSlackWorkspaceUrl } from '../service/slack/defaults.js'
 import { setConfig } from '../service/slack/config.js'
 import { browserOptionsFromArgv } from './browser-options.js'
+
+export interface GlobalOptions {
+  verbose: boolean
+  workspaceUrl: string
+  browserMode: 'persistent' | 'attach' | 'daemon'
+  browser: 'chrome' | 'firefox'
+  cdpUrl: string
+}
 
 export async function run(argv: string[] = process.argv): Promise<void> {
   const commandsDir = fileURLToPath(new URL('./commands', import.meta.url))
@@ -27,15 +36,15 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     })
     .option('browser-mode', {
       type: 'string',
-      choices: ['persistent', 'attach', 'daemon'],
-      default: 'persistent',
+      choices: ['persistent', 'attach', 'daemon'] as const,
+      default: 'persistent' as const,
       describe: 'Browser execution mode',
       global: true,
     })
     .option('browser', {
       type: 'string',
-      choices: ['chrome', 'firefox'],
-      default: 'chrome',
+      choices: ['chrome', 'firefox'] as const,
+      default: 'chrome' as const,
       describe: 'Browser engine for persistent mode',
       global: true,
     })
@@ -52,11 +61,11 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     .middleware((argv) => {
       setConfig({
         workspaceUrl: argv.workspaceUrl as string,
-        browser: browserOptionsFromArgv(argv),
+        browser: browserOptionsFromArgv(argv as unknown as GlobalOptions),
       })
     })
 
-  await cli
+  await (cli as Argv<GlobalOptions>)
     .demandCommand(1, 'Provide a command')
     .strict()
     .help()

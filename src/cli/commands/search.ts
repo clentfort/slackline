@@ -1,11 +1,17 @@
-import type { CommandModule } from 'yargs'
-
+import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { searchSlack } from '../../service/slack/search/search-slack.js'
+import type { GlobalOptions } from '../index.js'
 
 export const command = 'search'
 export const describe = 'Search Slack messages via Playwright automation'
 
-export const builder: CommandModule['builder'] = (yargs) =>
+interface SearchOptions extends GlobalOptions {
+  query: string
+  limit: number
+  json: boolean
+}
+
+export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
     .option('query', {
       alias: 'q',
@@ -24,10 +30,8 @@ export const builder: CommandModule['builder'] = (yargs) =>
       describe: 'Emit machine-readable JSON output',
     })
 
-export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const query = String(argv.query)
-  const limit = Number(argv.limit)
-  const asJson = Boolean(argv.json)
+export async function handler(argv: ArgumentsCamelCase<SearchOptions>): Promise<void> {
+  const { query, limit, json: asJson } = argv
 
   const result = await searchSlack({
     query,
