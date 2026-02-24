@@ -1,5 +1,4 @@
 import { SlackComponent } from '../slack-component.js'
-import { notificationInjectionScript } from './browser-scripts.js'
 import type { SlackEvent } from './types.js'
 
 export interface ForwarderOptions {
@@ -23,7 +22,7 @@ export class NotificationManager extends SlackComponent {
 
     // 1. Listen for Notifications via CDP (Chromium only)
     try {
-      const session = await this.page.context().newCDPSession(this.page)
+      const session = (await this.page.context().newCDPSession(this.page)) as any
       await session.send('Notification.enable')
       session.on('Notification.notificationDisplayed', (params: any) => {
         onEvent({
@@ -69,7 +68,7 @@ export class NotificationManager extends SlackComponent {
       onEvent({ type: 'notification', data })
     })
 
-    const script = `(titleCallback, notificationCallback) => {
+    const script = `({ titleCallback, notificationCallback }) => {
       // Title Observer
       let lastTitle = document.title;
       const observer = new MutationObserver(() => {
@@ -90,8 +89,9 @@ export class NotificationManager extends SlackComponent {
       }
     }`
 
-    await this.page.addInitScript(script, titleCallbackName, notificationCallbackName)
-    await this.page.evaluate(script, titleCallbackName, notificationCallbackName).catch(() => {})
+    const args = { titleCallback: titleCallbackName, notificationCallback: notificationCallbackName }
+    await this.page.addInitScript(script, args)
+    await this.page.evaluate(script, args).catch(() => {})
   }
 
   /**
