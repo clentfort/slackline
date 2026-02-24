@@ -1,14 +1,14 @@
-import { SlackComponent } from '../slack-component.js'
-import type { SlackEvent } from './types.js'
+import { SlackComponent } from "../slack-component.js";
+import type { SlackEvent } from "./types.js";
 
 export interface ForwarderOptions {
-  onEvent?: (event: SlackEvent) => void
-  onError?: (error: Error) => void
-  verbose?: boolean
+  onEvent?: (event: SlackEvent) => void;
+  onError?: (error: Error) => void;
+  verbose?: boolean;
 }
 
 export class NotificationManager extends SlackComponent {
-  private isListening = false
+  private isListening = false;
 
   /**
    * Starts listening for browser notifications and title changes.
@@ -16,17 +16,17 @@ export class NotificationManager extends SlackComponent {
    */
   async listen(onEvent: (event: SlackEvent) => void): Promise<void> {
     if (this.isListening) {
-      throw new Error('Already listening for notifications.')
+      throw new Error("Already listening for notifications.");
     }
-    this.isListening = true
+    this.isListening = true;
 
     // 1. Listen for Notifications via CDP (Chromium only)
     try {
-      const session = (await this.page.context().newCDPSession(this.page)) as any
-      await session.send('Notification.enable')
-      session.on('Notification.notificationDisplayed', (params: any) => {
+      const session = (await this.page.context().newCDPSession(this.page)) as any;
+      await session.send("Notification.enable");
+      session.on("Notification.notificationDisplayed", (params: any) => {
         onEvent({
-          type: 'notification',
+          type: "notification",
           data: {
             title: params.title,
             options: {
@@ -46,25 +46,25 @@ export class NotificationManager extends SlackComponent {
               actions: params.actions,
             },
           },
-        })
-      })
+        });
+      });
     } catch (err) {
       // Fallback or ignore if CDP is not available
-      console.warn('Failed to enable CDP Notification domain:', err)
+      console.warn("Failed to enable CDP Notification domain:", err);
     }
 
     // 2. Listen for Title changes via MutationObserver
-    const titleCallbackName = 'slacklineTitleCallback'
+    const titleCallbackName = "slacklineTitleCallback";
     await this.page.exposeFunction(titleCallbackName, (title: string) => {
-      onEvent({ type: 'title', data: { title } })
-    })
+      onEvent({ type: "title", data: { title } });
+    });
 
     // 3. Fallback/Support for Service Worker notifications via monkey-patch
     // (CDP on Page session doesn't always catch SW notifications)
-    const notificationCallbackName = 'slacklineNotificationCallback'
+    const notificationCallbackName = "slacklineNotificationCallback";
     await this.page.exposeFunction(notificationCallbackName, (data: any) => {
-      onEvent({ type: 'notification', data })
-    })
+      onEvent({ type: "notification", data });
+    });
 
     const script = `({ titleCallback, notificationCallback }) => {
       // Title Observer
@@ -85,11 +85,14 @@ export class NotificationManager extends SlackComponent {
           return original.apply(this, [title, options]);
         };
       }
-    }`
+    }`;
 
-    const args = { titleCallback: titleCallbackName, notificationCallback: notificationCallbackName }
-    await this.page.addInitScript(script, args)
-    await this.page.evaluate(script, args).catch(() => {})
+    const args = {
+      titleCallback: titleCallbackName,
+      notificationCallback: notificationCallbackName,
+    };
+    await this.page.addInitScript(script, args);
+    await this.page.evaluate(script, args).catch(() => {});
   }
 
   /**
@@ -98,25 +101,27 @@ export class NotificationManager extends SlackComponent {
   async startWebhookForwarder(webhookUrl: string, options: ForwarderOptions = {}): Promise<void> {
     await this.listen(async (event) => {
       if (options.onEvent) {
-        options.onEvent(event)
+        options.onEvent(event);
       }
 
       try {
         const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(event),
-        })
+        });
         if (!response.ok && options.verbose) {
-          console.error(`Webhook returned error: ${response.status} ${response.statusText}`)
+          console.error(`Webhook returned error: ${response.status} ${response.statusText}`);
         }
       } catch (err) {
         if (options.onError) {
-          options.onError(err instanceof Error ? err : new Error(String(err)))
+          options.onError(err instanceof Error ? err : new Error(String(err)));
         } else if (options.verbose) {
-          console.error(`Failed to send webhook: ${err instanceof Error ? err.message : String(err)}`)
+          console.error(
+            `Failed to send webhook: ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
       }
-    })
+    });
   }
 }

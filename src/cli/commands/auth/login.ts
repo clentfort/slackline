@@ -1,47 +1,49 @@
-import type { Argv, ArgumentsCamelCase } from 'yargs'
-import { loginToSlack } from '../../../service/slack/auth/login.js'
-import { startSlackDaemon } from '../../../service/playwright/daemon-manager.js'
-import type { GlobalOptions } from '../../index.js'
+import type { Argv, ArgumentsCamelCase } from "yargs";
+import { loginToSlack } from "../../../service/slack/auth/login.js";
+import { startSlackDaemon } from "../../../service/playwright/daemon-manager.js";
+import type { GlobalOptions } from "../../index.js";
 
-export const command = 'login'
-export const describe = 'Interactive login to Slack to establish a session'
+export const command = "login";
+export const describe = "Interactive login to Slack to establish a session";
 
 interface LoginOptions extends GlobalOptions {
-  timeoutSeconds: number
-  manualConfirm: boolean
+  timeoutSeconds: number;
+  manualConfirm: boolean;
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
-    .option('timeout-seconds', {
-      type: 'number',
+    .option("timeout-seconds", {
+      type: "number",
       default: 300,
-      describe: 'How long to wait for manual login completion',
+      describe: "How long to wait for manual login completion",
     })
-    .option('manual-confirm', {
-      type: 'boolean',
+    .option("manual-confirm", {
+      type: "boolean",
       default: true,
-      describe: 'Wait for Enter confirmation in terminal before verifying login',
-    })
+      describe: "Wait for Enter confirmation in terminal before verifying login",
+    });
 
 export async function handler(argv: ArgumentsCamelCase<LoginOptions>): Promise<void> {
-  const { cdpUrl, timeoutSeconds, manualConfirm, chromePath } = argv
+  const { cdpUrl, timeoutSeconds, manualConfirm, chromePath } = argv;
 
   // Ensure the daemon is running in headed mode for interactive login
   await startSlackDaemon({
     cdpUrl,
     headless: false,
     chromePath,
-  })
+  });
 
-  process.stdout.write('Opening Slack login window. Complete login in browser and keep it open until CLI confirms.\n')
-  await loginToSlack({ timeoutSeconds, manualConfirm })
-  process.stdout.write('Login flow completed. Persistent browser profile is ready.\n')
+  process.stdout.write(
+    "Opening Slack login window. Complete login in browser and keep it open until CLI confirms.\n",
+  );
+  await loginToSlack({ timeoutSeconds, manualConfirm });
+  process.stdout.write("Login flow completed. Persistent browser profile is ready.\n");
 
   // Switch back to headless mode after login
   await startSlackDaemon({
     cdpUrl,
     headless: true,
     chromePath,
-  })
+  });
 }

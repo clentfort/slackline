@@ -9,4 +9,4 @@ export const BROWSER_HELPERS = {
     const numeric = Number.parseFloat((value ?? '').trim());
     return Number.isFinite(numeric) ? numeric : undefined;
   }`,
-}
+};
