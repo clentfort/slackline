@@ -3,8 +3,6 @@ import { SlackClient } from './slack-client.js'
 import { getConfig } from './config.js'
 
 export type WithSlackClientOptions = {
-  workspaceUrl?: string
-  browser?: SlackBrowserOptions
   headless?: boolean
   skipLoginCheck?: boolean
 }
@@ -14,8 +12,8 @@ export async function withSlackClient<T>(
   callback: (client: SlackClient) => Promise<T>,
 ): Promise<T> {
   const config = getConfig()
-  const workspaceUrl = options.workspaceUrl ?? config.workspaceUrl
-  const browser = options.browser ?? config.browser
+  const workspaceUrl = config.workspaceUrl
+  const browser = config.browser
 
   return withSlackContext(
     {

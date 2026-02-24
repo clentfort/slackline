@@ -9,12 +9,12 @@ export type SlackConversation = {
 }
 
 export class ConversationManager extends SlackComponent {
-  async open(options: { target?: string } = {}): Promise<SlackConversation> {
+  async open(options: { target: string }): Promise<SlackConversation> {
     const target = this.normalizeTarget(options.target)
     const workspaceUrl = this.config.workspaceUrl
     const targetUrl = this.isAbsoluteUrl(target) ? target : workspaceUrl
 
-    if (workspaceUrl && this.page.url() !== targetUrl) {
+    if (this.page.url() !== targetUrl) {
       await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' })
     }
 

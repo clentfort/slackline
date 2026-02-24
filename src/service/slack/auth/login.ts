@@ -1,15 +1,12 @@
 import { createInterface } from 'node:readline/promises'
 
 import { withSlackClient } from '../with-slack-client.js'
-import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 import { getSlackProfile } from '../profile/get-profile.js'
 import { isLoggedInContext } from '../session/session-state.js'
 
 type LoginOptions = {
   timeoutSeconds: number
   manualConfirm: boolean
-  workspaceUrl?: string
-  browser?: SlackBrowserOptions
 }
 
 export async function loginToSlack(options: LoginOptions): Promise<void> {
@@ -21,7 +18,6 @@ export async function loginToSlack(options: LoginOptions): Promise<void> {
   try {
     detected = await withSlackClient(
       {
-        ...options,
         headless: false,
         skipLoginCheck: true,
       },
@@ -54,10 +50,7 @@ export async function loginToSlack(options: LoginOptions): Promise<void> {
     return
   }
 
-  const profile = await getSlackProfile({
-    workspaceUrl: options.workspaceUrl,
-    browser: options.browser,
-  })
+  const profile = await getSlackProfile()
   if (profile.loggedIn) {
     return
   }
