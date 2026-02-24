@@ -2,22 +2,19 @@ import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { getRecentMessages } from '../../service/slack/messages/get-recent-messages.js'
 import type { GlobalOptions } from '../index.js'
 
-export const command = 'messages'
+export const command = 'messages <target>'
 export const aliases = ['tail']
 export const describe = 'Get the latest messages from a channel or DM'
 
 interface MessagesOptions extends GlobalOptions {
   target: string
   limit: number
-  json: boolean
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
-    .option('target', {
-      alias: 't',
+    .positional('target', {
       type: 'string',
-      demandOption: true,
       describe: 'Channel/DM name (e.g. sozial, @christian_slack.com) or full Slack URL',
     })
     .option('limit', {
@@ -25,11 +22,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
       type: 'number',
       default: 20,
       describe: 'How many recent messages to return (latest first)',
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Emit machine-readable JSON output',
     })
 
 export async function handler(argv: ArgumentsCamelCase<MessagesOptions>): Promise<void> {

@@ -2,32 +2,24 @@ import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { searchSlack } from '../../service/slack/search/search-slack.js'
 import type { GlobalOptions } from '../index.js'
 
-export const command = 'search'
+export const command = 'search <query>'
 export const describe = 'Search Slack messages via Playwright automation'
 
 interface SearchOptions extends GlobalOptions {
   query: string
   limit: number
-  json: boolean
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
-    .option('query', {
-      alias: 'q',
+    .positional('query', {
       type: 'string',
-      demandOption: true,
       describe: 'Search query text',
     })
     .option('limit', {
       type: 'number',
       default: 10,
       describe: 'Maximum number of matches to print',
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Emit machine-readable JSON output',
     })
 
 export async function handler(argv: ArgumentsCamelCase<SearchOptions>): Promise<void> {
