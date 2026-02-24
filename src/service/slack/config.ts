@@ -1,4 +1,4 @@
-import type { SlackBrowserOptions, SlackBrowserMode, SlackBrowserName } from '../playwright/playwright-client.js'
+import type { SlackBrowserOptions } from '../playwright/playwright-client.js'
 import { defaultSlackWorkspaceUrl } from './defaults.js'
 
 export type SlackConfig = {
@@ -9,8 +9,6 @@ export type SlackConfig = {
 const currentConfig: SlackConfig = {
   workspaceUrl: process.env.SLACKLINE_WORKSPACE_URL ?? defaultSlackWorkspaceUrl,
   browser: {
-    mode: (process.env.SLACKLINE_BROWSER_MODE as SlackBrowserMode) ?? 'persistent',
-    browser: (process.env.SLACKLINE_BROWSER as SlackBrowserName) ?? 'chrome',
     cdpUrl: process.env.SLACKLINE_CDP_URL ?? 'http://127.0.0.1:9222',
   },
 }

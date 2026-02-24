@@ -3,8 +3,7 @@ import type { GlobalOptions } from './index.js'
 
 export function browserOptionsFromArgv(argv: GlobalOptions): SlackBrowserOptions {
   return {
-    mode: argv.browserMode,
-    browser: argv.browser,
     cdpUrl: argv.cdpUrl.trim() || undefined,
+    chromePath: argv.chromePath?.trim() || undefined,
   }
 }

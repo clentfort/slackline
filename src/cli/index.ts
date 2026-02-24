@@ -11,10 +11,9 @@ import { browserOptionsFromArgv } from './browser-options.js'
 export interface GlobalOptions {
   verbose: boolean
   workspaceUrl: string
-  browserMode: 'persistent' | 'attach' | 'daemon'
-  browser: 'chrome' | 'firefox'
   cdpUrl: string
   json: boolean
+  chromePath?: string
 }
 
 export function createParser(options: { skipCommandDir?: boolean } = {}): Argv<GlobalOptions> {
@@ -36,26 +35,17 @@ export function createParser(options: { skipCommandDir?: boolean } = {}): Argv<G
       default: defaultSlackWorkspaceUrl,
       global: true,
     })
-    .option('browserMode', {
-      alias: 'browser-mode',
-      type: 'string',
-      choices: ['persistent', 'attach', 'daemon'] as const,
-      default: 'persistent' as const,
-      describe: 'Browser execution mode',
-      global: true,
-    })
-    .option('browser', {
-      type: 'string',
-      choices: ['chrome', 'firefox'] as const,
-      default: 'chrome' as const,
-      describe: 'Browser engine for persistent mode',
-      global: true,
-    })
     .option('cdpUrl', {
       alias: 'cdp-url',
       type: 'string',
       default: 'http://127.0.0.1:9222',
-      describe: 'CDP endpoint URL for attach/daemon mode',
+      describe: 'CDP endpoint URL for the browser daemon',
+      global: true,
+    })
+    .option('chromePath', {
+      alias: 'chrome-path',
+      type: 'string',
+      describe: 'Path to Chrome executable',
       global: true,
     })
     .option('json', {

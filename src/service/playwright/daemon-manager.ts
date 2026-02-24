@@ -38,7 +38,10 @@ export async function startSlackDaemon(options: StartDaemonOptions): Promise<Sla
   const cdpUrl = normalizeCdpUrl(options.cdpUrl)
   const existing = await getSlackDaemonStatus({ cdpUrl })
   if (existing.running) {
-    return existing
+    if (options.headless === existing.headless) {
+      return existing
+    }
+    await stopSlackDaemon()
   }
 
   const chromePath = options.chromePath?.trim() || process.env.SLACKLINE_CHROME_PATH || defaultChromePath
@@ -154,21 +157,6 @@ export async function getSlackDaemonStatus(options: { cdpUrl?: string } = {}): P
     headless: state?.headless,
     startedAt: state?.startedAt,
   }
-}
-
-export async function resolveDaemonCdpUrl(): Promise<string> {
-  const state = await readDaemonState()
-  const cdpUrl = state?.cdpUrl
-
-  if (!cdpUrl) {
-    throw new Error('No daemon state found. Start daemon first: slackline daemon start')
-  }
-
-  if (!(await isCdpReachable(cdpUrl))) {
-    throw new Error(`Daemon is not reachable at ${cdpUrl}. Restart with: slackline daemon start`)
-  }
-
-  return cdpUrl
 }
 
 async function waitForCdp(cdpUrl: string, timeoutMs: number): Promise<void> {
