@@ -49,10 +49,8 @@ export class NotificationManager extends SlackComponent {
         })
       })
     } catch (err) {
-      // Fallback or ignore if CDP is not available (e.g. non-Chromium)
-      if (this.config.browser.browser === 'chrome') {
-        console.warn('Failed to enable CDP Notification domain:', err)
-      }
+      // Fallback or ignore if CDP is not available
+      console.warn('Failed to enable CDP Notification domain:', err)
     }
 
     // 2. Listen for Title changes via MutationObserver

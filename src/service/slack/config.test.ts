@@ -18,10 +18,9 @@ describe('config', () => {
   })
 
   it('should update browser options partially', () => {
-    setConfig({ browser: { mode: 'attach' } })
+    const newCdpUrl = 'http://localhost:9999'
+    setConfig({ browser: { cdpUrl: newCdpUrl } })
     const config = getConfig()
-    expect(config.browser.mode).toBe('attach')
-    // other fields should remain
-    expect(config.browser.browser).toBeDefined()
+    expect(config.browser.cdpUrl).toBe(newCdpUrl)
   })
 })

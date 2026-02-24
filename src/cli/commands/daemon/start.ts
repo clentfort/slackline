@@ -20,10 +20,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
       default: true,
       describe: 'Run daemon browser in headless mode when starting',
     })
-    .option('chrome-path', {
-      type: 'string',
-      describe: 'Path to Chrome executable for daemon start',
-    })
 
 export async function handler(argv: ArgumentsCamelCase<StartOptions>): Promise<void> {
   const { cdpUrl, json: asJson, headless, chromePath } = argv
