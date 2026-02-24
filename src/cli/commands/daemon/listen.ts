@@ -44,12 +44,26 @@ export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<
 
     // Keep the process running until interrupted
     return new Promise<void>((resolve) => {
-      const onSigInt = () => {
+      const keepAlive = setInterval(() => {}, 60_000);
+
+      const stop = () => {
+        clearInterval(keepAlive);
         process.stdout.write("\nStopping listener...\n");
         process.off("SIGINT", onSigInt);
+        process.off("SIGTERM", onSigTerm);
         resolve();
       };
+
+      const onSigInt = () => {
+        stop();
+      };
+
+      const onSigTerm = () => {
+        stop();
+      };
+
       process.on("SIGINT", onSigInt);
+      process.on("SIGTERM", onSigTerm);
     });
   });
 }

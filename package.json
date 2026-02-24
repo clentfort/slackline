@@ -9,6 +9,7 @@
   "scripts": {
     "build": "rm -rf dist && tsgo",
     "dev": "tsx src/cli.ts",
+    "debug:webhook": "node scripts/debug-webhook-server.mjs",
     "format": "oxfmt .",
     "lint": "oxlint .",
     "prepare": "simple-git-hooks",
