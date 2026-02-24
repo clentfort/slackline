@@ -4,7 +4,15 @@ import type { SlackClient } from '../slack-client.js'
 
 describe('NotificationManager', () => {
   it('should register init script and expose function', async () => {
+    const mockSession = {
+      send: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
+    }
+    const mockContext = {
+      newCDPSession: vi.fn().mockResolvedValue(mockSession),
+    }
     const mockPage = {
+      context: vi.fn().mockReturnValue(mockContext),
       exposeFunction: vi.fn(),
       addInitScript: vi.fn(),
       evaluate: vi.fn().mockResolvedValue(undefined),
@@ -16,15 +24,28 @@ describe('NotificationManager', () => {
     await manager.listen(onEvent)
 
     expect(mockPage.exposeFunction).toHaveBeenCalledWith(
+      'slacklineTitleCallback',
+      expect.any(Function),
+    )
+    expect(mockPage.exposeFunction).toHaveBeenCalledWith(
       'slacklineNotificationCallback',
       expect.any(Function),
     )
     expect(mockPage.addInitScript).toHaveBeenCalled()
     expect(mockPage.evaluate).toHaveBeenCalled()
+    expect(mockSession.send).toHaveBeenCalledWith('Notification.enable')
   })
 
   it('should throw if called twice', async () => {
+    const mockSession = {
+      send: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
+    }
+    const mockContext = {
+      newCDPSession: vi.fn().mockResolvedValue(mockSession),
+    }
     const mockPage = {
+      context: vi.fn().mockReturnValue(mockContext),
       exposeFunction: vi.fn(),
       addInitScript: vi.fn(),
       evaluate: vi.fn().mockResolvedValue(undefined),

@@ -58,30 +58,23 @@ export async function handler(argv: ArgumentsCamelCase<DaemonOptions>): Promise<
       process.stdout.write(`Listening for Slack events and forwarding to ${webhook}...\n`)
       process.stdout.write('Press Ctrl+C to stop.\n')
 
-      await client.notifications.listen(async (event) => {
-        const timestamp = new Date().toISOString()
-        if (asJson) {
-          process.stdout.write(`${JSON.stringify({ timestamp, ...event })}\n`)
-        } else {
-          if (event.type === 'notification') {
-            process.stdout.write(`[${timestamp}] Notification: ${event.data.title}\n`)
+      await client.notifications.startWebhookForwarder(webhook, {
+        verbose: true,
+        onEvent: (event) => {
+          const timestamp = new Date().toISOString()
+          if (asJson) {
+            process.stdout.write(`${JSON.stringify({ timestamp, ...event })}\n`)
           } else {
-            process.stdout.write(`[${timestamp}] Title changed: ${event.data.title}\n`)
+            if (event.type === 'notification') {
+              process.stdout.write(`[${timestamp}] Notification: ${event.data.title}\n`)
+            } else {
+              process.stdout.write(`[${timestamp}] Title changed: ${event.data.title}\n`)
+            }
           }
-        }
-
-        try {
-          const response = await fetch(webhook, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(event),
-          })
-          if (!response.ok) {
-            process.stderr.write(`Webhook returned error: ${response.status} ${response.statusText}\n`)
-          }
-        } catch (err) {
-          process.stderr.write(`Failed to send webhook: ${err instanceof Error ? err.message : String(err)}\n`)
-        }
+        },
+        onError: (err) => {
+          process.stderr.write(`Failed to send webhook: ${err.message}\n`)
+        },
       })
 
       // Keep the process running until interrupted
