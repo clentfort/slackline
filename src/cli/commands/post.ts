@@ -2,7 +2,7 @@ import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { postMessage } from '../../service/slack/messages/post-message.js'
 import type { GlobalOptions } from '../index.js'
 
-export const command = 'post'
+export const command = 'post <target> <message>'
 export const describe = 'Post a message to a Slack channel or DM'
 
 interface PostOptions extends GlobalOptions {
@@ -13,16 +13,12 @@ interface PostOptions extends GlobalOptions {
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
-    .option('target', {
-      alias: 't',
+    .positional('target', {
       type: 'string',
-      demandOption: true,
       describe: 'Channel/DM name (e.g. sozial, @christian_slack.com) or full Slack URL',
     })
-    .option('message', {
-      alias: 'm',
+    .positional('message', {
       type: 'string',
-      demandOption: true,
       describe: 'Message text to post',
     })
     .option('json', {

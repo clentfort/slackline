@@ -2,7 +2,7 @@ import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { searchSlack } from '../../service/slack/search/search-slack.js'
 import type { GlobalOptions } from '../index.js'
 
-export const command = 'search'
+export const command = 'search <query>'
 export const describe = 'Search Slack messages via Playwright automation'
 
 interface SearchOptions extends GlobalOptions {
@@ -13,10 +13,8 @@ interface SearchOptions extends GlobalOptions {
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
-    .option('query', {
-      alias: 'q',
+    .positional('query', {
       type: 'string',
-      demandOption: true,
       describe: 'Search query text',
     })
     .option('limit', {
