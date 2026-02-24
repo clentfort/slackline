@@ -1,10 +1,18 @@
+import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { getRecentMessages } from '../../service/slack/messages/get-recent-messages.js'
+import type { GlobalOptions } from '../index.js'
 
 export const command = 'messages'
 export const aliases = ['tail']
 export const describe = 'Get the latest messages from a channel or DM'
 
-export const builder = (yargs: any) =>
+interface MessagesOptions extends GlobalOptions {
+  target: string
+  limit: number
+  json: boolean
+}
+
+export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
     .option('target', {
       alias: 't',
@@ -24,10 +32,8 @@ export const builder = (yargs: any) =>
       describe: 'Emit machine-readable JSON output',
     })
 
-export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const target = String(argv.target)
-  const limit = Number(argv.limit)
-  const asJson = Boolean(argv.json)
+export async function handler(argv: ArgumentsCamelCase<MessagesOptions>): Promise<void> {
+  const { target, limit, json: asJson } = argv
 
   const result = await getRecentMessages({
     target,

@@ -1,3 +1,4 @@
+import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { loginToSlack } from '../../service/slack/auth/login.js'
 import { getConfig } from '../../service/slack/config.js'
 import {
@@ -6,16 +7,25 @@ import {
   stopSlackDaemon,
 } from '../../service/playwright/daemon-manager.js'
 import { getSlackProfile } from '../../service/slack/profile/get-profile.js'
+import type { GlobalOptions } from '../index.js'
 
 export const command = 'auth <action>'
 export const describe = 'Authenticate and inspect Slack session state'
 
-export const builder = (yargs: any) =>
+interface AuthOptions extends GlobalOptions {
+  action: 'login' | 'whoami' | 'profile'
+  timeoutSeconds: number
+  manualConfirm: boolean
+  json: boolean
+}
+
+export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
     .positional('action', {
       type: 'string',
       choices: ['login', 'whoami', 'profile'] as const,
       describe: 'Auth action to execute',
+      demandOption: true,
     })
     .option('timeout-seconds', {
       type: 'number',
@@ -33,14 +43,11 @@ export const builder = (yargs: any) =>
       describe: 'Emit machine-readable JSON output',
     })
 
-export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const action = String(argv.action)
+export async function handler(argv: ArgumentsCamelCase<AuthOptions>): Promise<void> {
+  const { action, json: asJson, timeoutSeconds, manualConfirm } = argv
   const config = getConfig()
 
   if (action === 'login') {
-    const timeoutSeconds = Number(argv.timeoutSeconds)
-    const manualConfirm = Boolean(argv.manualConfirm)
-
     if (config.browser.mode === 'daemon') {
       await ensureInteractiveDaemon(config.browser.cdpUrl)
     }
@@ -51,7 +58,6 @@ export async function handler(argv: Record<string, unknown>): Promise<void> {
     return
   }
 
-  const asJson = Boolean(argv.json)
   const profile = await getSlackProfile({})
 
   if (asJson) {

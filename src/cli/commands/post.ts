@@ -1,9 +1,17 @@
+import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { postMessage } from '../../service/slack/messages/post-message.js'
+import type { GlobalOptions } from '../index.js'
 
 export const command = 'post'
 export const describe = 'Post a message to a Slack channel or DM'
 
-export const builder = (yargs: any) =>
+interface PostOptions extends GlobalOptions {
+  target: string
+  message: string
+  json: boolean
+}
+
+export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
     .option('target', {
       alias: 't',
@@ -23,10 +31,8 @@ export const builder = (yargs: any) =>
       describe: 'Emit machine-readable JSON output',
     })
 
-export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const target = String(argv.target)
-  const message = String(argv.message)
-  const asJson = Boolean(argv.json)
+export async function handler(argv: ArgumentsCamelCase<PostOptions>): Promise<void> {
+  const { target, message, json: asJson } = argv
 
   const result = await postMessage({
     target,
