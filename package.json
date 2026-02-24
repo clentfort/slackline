@@ -2,28 +2,45 @@
   "name": "slackline",
   "version": "0.1.0",
   "description": "CLI automation for Slack via Playwright",
-  "type": "module",
   "bin": {
     "slackline": "dist/cli.js"
   },
+  "type": "module",
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "build": "rm -rf dist && tsgo",
     "dev": "tsx src/cli.ts",
+    "format": "oxfmt .",
+    "lint": "oxlint .",
+    "prepare": "simple-git-hooks",
     "playwright:install": "playwright install chrome",
-    "test": "vitest run"
-  },
-  "engines": {
-    "node": ">=20"
+    "test": "vitest run",
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "playwright": "^1.55.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@nkzw/oxlint-config": "^1.0.1",
     "@types/node": "^24.5.2",
     "@types/yargs": "^17.0.33",
+    "@typescript/native-preview": "^7.0.0-dev.20260224.1",
+    "lint-staged": "^16.2.7",
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.50.0",
+    "simple-git-hooks": "^2.13.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^4.0.18"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run typecheck && npx lint-staged"
+  },
+  "lint-staged": {
+    "*": "oxfmt --no-error-on-unmatched-pattern --write",
+    "*.{js,ts}": "oxlint --fix"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

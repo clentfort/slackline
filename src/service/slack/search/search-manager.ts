@@ -1,82 +1,90 @@
-import type { Locator } from 'playwright'
-import { SlackComponent } from '../slack-component.js'
-import { BROWSER_HELPERS } from '../utils/browser-helpers.js'
+import type { Locator } from "playwright";
+import { SlackComponent } from "../slack-component.js";
+import { BROWSER_HELPERS } from "../utils/browser-helpers.js";
 
 export type SlackSearchItem = {
-  user?: string
-  channel?: string
-  message: string
-  timestampLabel?: string
-  timestampUnix?: number
-  timestampIso?: string
-  rawText: string
-}
+  user?: string;
+  channel?: string;
+  message: string;
+  timestampLabel?: string;
+  timestampUnix?: number;
+  timestampIso?: string;
+  rawText: string;
+};
 
 export type SlackSearchResult = {
-  query: string
-  results: SlackSearchItem[]
-}
+  query: string;
+  results: SlackSearchItem[];
+};
 
 export class SearchManager extends SlackComponent {
   async search(query: string, limit: number): Promise<SlackSearchResult> {
-    const searchField = await this.openSearchField()
-    await searchField.click({ force: true })
-    await searchField.fill(query)
-    await this.submitSearch(searchField, query)
+    const searchField = await this.openSearchField();
+    await searchField.click({ force: true });
+    await searchField.fill(query);
+    await this.submitSearch(searchField, query);
 
-    await this.page.waitForTimeout(2500)
-    await this.page.locator('[data-qa="search_result"]').first().waitFor({ state: 'visible', timeout: 7000 }).catch(() => {})
-
-    const records = await this.page
+    await this.page.waitForTimeout(2500);
+    await this.page
       .locator('[data-qa="search_result"]')
-      .evaluateAll((nodes, { query, helpers }) => {
-        const normalize = new Function(`return ${helpers.normalize}`)()
-        const parseUnixSeconds = new Function(`return ${helpers.parseUnixSeconds}`)()
+      .first()
+      .waitFor({ state: "visible", timeout: 7000 })
+      .catch(() => {});
 
-        const queryLower = query.toLowerCase()
-        const seen = new Set<string>()
-        const items: any[] = []
+    const records = await this.page.locator('[data-qa="search_result"]').evaluateAll(
+      (nodes, { query, helpers }) => {
+        const normalize = new Function(`return ${helpers.normalize}`)();
+        const parseUnixSeconds = new Function(`return ${helpers.parseUnixSeconds}`)();
+
+        const queryLower = query.toLowerCase();
+        const seen = new Set<string>();
+        const items: any[] = [];
 
         for (const node of nodes) {
-          const rawText = normalize(node.textContent)
+          const rawText = normalize(node.textContent);
           if (!rawText) {
-            continue
+            continue;
           }
 
-          const user = normalize(node.querySelector('[data-qa="message_sender_name"]')?.textContent) || undefined
+          const user =
+            normalize(node.querySelector('[data-qa="message_sender_name"]')?.textContent) ||
+            undefined;
 
           const channelInNode = normalize(
             node.querySelector('[data-qa="search_result_channel_name"]')?.textContent,
-          )
-          const sibling = node.nextElementSibling
+          );
+          const sibling = node.nextElementSibling;
           const channelInSibling =
-            sibling?.getAttribute('data-qa') === 'search_result_channel_name'
+            sibling?.getAttribute("data-qa") === "search_result_channel_name"
               ? normalize(sibling.textContent)
-              : ''
+              : "";
 
-          const channel = channelInNode || channelInSibling
+          const channel = channelInNode || channelInSibling;
 
-          const timestampNode = node.querySelector('[data-qa="timestamp_label"]')
-          const timestampLabel = normalize(timestampNode?.textContent) || undefined
-          const timestampAnchor = timestampNode?.closest('[data-ts]')
-          const timestampUnix = parseUnixSeconds(timestampAnchor?.getAttribute('data-ts'))
+          const timestampNode = node.querySelector('[data-qa="timestamp_label"]');
+          const timestampLabel = normalize(timestampNode?.textContent) || undefined;
+          const timestampAnchor = timestampNode?.closest("[data-ts]");
+          const timestampUnix = parseUnixSeconds(timestampAnchor?.getAttribute("data-ts"));
           const timestampIso =
-            typeof timestampUnix === 'number' ? new Date(timestampUnix * 1000).toISOString() : undefined
+            typeof timestampUnix === "number"
+              ? new Date(timestampUnix * 1000).toISOString()
+              : undefined;
 
           const message =
             normalize(node.querySelector('[data-qa="message-text"]')?.textContent) ||
-            normalize(node.querySelector('.c-message__body')?.textContent) ||
-            rawText
+            normalize(node.querySelector(".c-message__body")?.textContent) ||
+            rawText;
 
           const messageMatchesQuery =
-            rawText.toLowerCase().includes(queryLower) || message.toLowerCase().includes(queryLower)
+            rawText.toLowerCase().includes(queryLower) ||
+            message.toLowerCase().includes(queryLower);
 
-          const dedupeKey = [user ?? '', channel ?? '', timestampLabel ?? '', message].join('|')
+          const dedupeKey = [user ?? "", channel ?? "", timestampLabel ?? "", message].join("|");
           if (!messageMatchesQuery || seen.has(dedupeKey)) {
-            continue
+            continue;
           }
 
-          seen.add(dedupeKey)
+          seen.add(dedupeKey);
           items.push({
             user,
             channel: channel || undefined,
@@ -85,115 +93,117 @@ export class SearchManager extends SlackComponent {
             timestampUnix,
             timestampIso,
             rawText,
-          })
+          });
         }
 
-        return items
-      }, { query, helpers: BROWSER_HELPERS })
+        return items;
+      },
+      { query, helpers: BROWSER_HELPERS },
+    );
 
     return {
       query: query,
       results: records.slice(0, Math.max(0, limit)),
-    }
+    };
   }
 
   private async openSearchField(): Promise<Locator> {
-    const searchButton = this.page.locator('button[data-qa="top_nav_search"]').first()
-    await searchButton.waitFor({ state: 'visible', timeout: 15000 })
+    const searchButton = this.page.locator('button[data-qa="top_nav_search"]').first();
+    await searchButton.waitFor({ state: "visible", timeout: 15000 });
 
-    await this.clearTopSearchQuery()
+    await this.clearTopSearchQuery();
 
-    await searchButton.click({ force: true }).catch(() => {})
-    const fromClick = await this.findSearchField(3500)
+    await searchButton.click({ force: true }).catch(() => {});
+    const fromClick = await this.findSearchField(3500);
     if (fromClick) {
-      return fromClick
+      return fromClick;
     }
 
-    await searchButton.focus().catch(() => {})
-    await searchButton.press('Enter').catch(() => {})
-    const fromEnter = await this.findSearchField(2500)
+    await searchButton.focus().catch(() => {});
+    await searchButton.press("Enter").catch(() => {});
+    const fromEnter = await this.findSearchField(2500);
     if (fromEnter) {
-      return fromEnter
+      return fromEnter;
     }
 
-    const openSearchShortcut = process.platform === 'darwin' ? 'Meta+K' : 'Control+K'
-    await this.page.keyboard.press(openSearchShortcut).catch(() => {})
-    const fromShortcut = await this.findSearchField(2500)
+    const openSearchShortcut = process.platform === "darwin" ? "Meta+K" : "Control+K";
+    await this.page.keyboard.press(openSearchShortcut).catch(() => {});
+    const fromShortcut = await this.findSearchField(2500);
     if (fromShortcut) {
-      return fromShortcut
+      return fromShortcut;
     }
 
-    throw new Error('Could not locate Slack search field. Slack UI may have changed.')
+    throw new Error("Could not locate Slack search field. Slack UI may have changed.");
   }
 
   private async clearTopSearchQuery(): Promise<void> {
-    const clearButton = this.page.locator('[data-qa="top_nav_search_clear"]').first()
+    const clearButton = this.page.locator('[data-qa="top_nav_search_clear"]').first();
 
     if ((await clearButton.count()) === 0) {
-      return
+      return;
     }
 
-    const visible = await clearButton.isVisible().catch(() => false)
+    const visible = await clearButton.isVisible().catch(() => false);
     if (!visible) {
-      return
+      return;
     }
 
-    await clearButton.click({ force: true }).catch(() => {})
-    await this.page.waitForTimeout(350)
+    await clearButton.click({ force: true }).catch(() => {});
+    await this.page.waitForTimeout(350);
   }
 
   private async findSearchField(timeoutMs: number): Promise<Locator | null> {
     const selectors = [
       '[data-qa="search_input_box"] [data-qa="texty_input"][contenteditable="true"]',
       '[data-qa="focusable_search_input"] [data-qa="texty_input"][contenteditable="true"]',
-    ]
+    ];
 
     for (const selector of selectors) {
-      const locator = this.page.locator(selector).first()
+      const locator = this.page.locator(selector).first();
       try {
-        await locator.waitFor({ state: 'visible', timeout: timeoutMs })
-        return locator
+        await locator.waitFor({ state: "visible", timeout: timeoutMs });
+        return locator;
       } catch {
         // Try next selector.
       }
     }
 
-    return null
+    return null;
   }
 
-  private async submitSearch(
-    searchField: Locator,
-    query: string,
-  ): Promise<void> {
-    await searchField.press('Enter')
+  private async submitSearch(searchField: Locator, query: string): Promise<void> {
+    await searchField.press("Enter");
 
     if (await this.waitForSearchUrl(3000)) {
-      return
+      return;
     }
 
-    const queryOption = this.page.locator('[data-qa="search-query-entity-text-content"]').filter({ hasText: query }).first()
+    const queryOption = this.page
+      .locator('[data-qa="search-query-entity-text-content"]')
+      .filter({ hasText: query })
+      .first();
     try {
-      await queryOption.waitFor({ state: 'visible', timeout: 2500 })
-      await queryOption.click({ force: true })
+      await queryOption.waitFor({ state: "visible", timeout: 2500 });
+      await queryOption.click({ force: true });
     } catch {
-      await searchField.press('Enter')
+      await searchField.press("Enter");
     }
 
     if (!(await this.waitForSearchUrl(3000))) {
-      await this.page.waitForURL('**/search**', { timeout: 30000 })
+      await this.page.waitForURL("**/search**", { timeout: 30000 });
     }
   }
 
   private async waitForSearchUrl(timeoutMs: number): Promise<boolean> {
-    if (this.page.url().includes('/search')) {
-      return true
+    if (this.page.url().includes("/search")) {
+      return true;
     }
 
     try {
-      await this.page.waitForURL('**/search**', { timeout: timeoutMs })
-      return true
+      await this.page.waitForURL("**/search**", { timeout: timeoutMs });
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 }

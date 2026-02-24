@@ -1,40 +1,40 @@
-import type { Argv, ArgumentsCamelCase } from 'yargs'
-import { postMessage } from '../../service/slack/messages/post-message.js'
-import type { GlobalOptions } from '../index.js'
+import type { Argv, ArgumentsCamelCase } from "yargs";
+import { postMessage } from "../../service/slack/messages/post-message.js";
+import type { GlobalOptions } from "../index.js";
 
-export const command = 'post <target> <message>'
-export const describe = 'Post a message to a Slack channel or DM'
+export const command = "post <target> <message>";
+export const describe = "Post a message to a Slack channel or DM";
 
 interface PostOptions extends GlobalOptions {
-  target: string
-  message: string
+  target: string;
+  message: string;
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
   yargs
-    .positional('target', {
-      type: 'string',
-      describe: 'Channel/DM name (e.g. sozial, @christian_slack.com) or full Slack URL',
+    .positional("target", {
+      type: "string",
+      describe: "Channel/DM name (e.g. sozial, @christian_slack.com) or full Slack URL",
     })
-    .positional('message', {
-      type: 'string',
-      describe: 'Message text to post',
-    })
+    .positional("message", {
+      type: "string",
+      describe: "Message text to post",
+    });
 
 export async function handler(argv: ArgumentsCamelCase<PostOptions>): Promise<void> {
-  const { target, message, json: asJson } = argv
+  const { target, message, json: asJson } = argv;
 
   const result = await postMessage({
     target,
     message,
-  })
+  });
 
   if (asJson) {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
-    return
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
   }
 
-  const label = result.conversation.name ?? result.target
-  const when = result.posted.timestampLabel ?? result.posted.timestampIso ?? 'just now'
-  process.stdout.write(`Posted to ${label} (${result.conversation.type}) at ${when}.\n`)
+  const label = result.conversation.name ?? result.target;
+  const when = result.posted.timestampLabel ?? result.posted.timestampIso ?? "just now";
+  process.stdout.write(`Posted to ${label} (${result.conversation.type}) at ${when}.\n`);
 }

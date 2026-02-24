@@ -1,19 +1,18 @@
-import { withSlackContext, type SlackBrowserOptions } from '../playwright/playwright-client.js'
-import { SlackClient } from './slack-client.js'
-import { getConfig } from './config.js'
+import { withSlackContext } from "../playwright/playwright-client.js";
+import { SlackClient } from "./slack-client.js";
+import { getConfig } from "./config.js";
 
 export type WithSlackClientOptions = {
-  headless?: boolean
-  skipLoginCheck?: boolean
-}
+  headless?: boolean;
+  skipLoginCheck?: boolean;
+};
 
 export async function withSlackClient<T>(
   options: WithSlackClientOptions = {},
   callback: (client: SlackClient) => Promise<T>,
 ): Promise<T> {
-  const config = getConfig()
-  const workspaceUrl = config.workspaceUrl
-  const browser = config.browser
+  const config = getConfig();
+  const browser = config.browser;
 
   return withSlackContext(
     {
@@ -21,15 +20,15 @@ export async function withSlackClient<T>(
       ...browser,
     },
     async ({ page }) => {
-      const client = new SlackClient(page)
+      const client = new SlackClient(page);
 
-      await client.navigateToWorkspaceRoot()
+      await client.navigateToWorkspaceRoot();
 
       if (!options.skipLoginCheck) {
-        await client.ensureLoggedIn()
+        await client.ensureLoggedIn();
       }
 
-      return callback(client)
+      return callback(client);
     },
-  )
+  );
 }
