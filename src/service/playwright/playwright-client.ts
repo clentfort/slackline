@@ -1,6 +1,6 @@
 import { chromium, type BrowserContext, type Page } from 'playwright'
 
-import { startSlackDaemon } from './daemon-manager.js'
+import { startSlackDaemon, getSlackDaemonStatus } from './daemon-manager.js'
 
 export type SlackBrowserOptions = {
   cdpUrl?: string
@@ -15,8 +15,9 @@ export async function withSlackContext<T>(
   options: WithSlackContextOptions,
   callback: (value: { context: BrowserContext; page: Page }) => Promise<T>,
 ): Promise<T> {
+  const currentStatus = await getSlackDaemonStatus({ cdpUrl: options.cdpUrl })
   const status = await startSlackDaemon({
-    cdpUrl: options.cdpUrl ?? 'http://127.0.0.1:9222',
+    cdpUrl: options.cdpUrl ?? currentStatus.cdpUrl,
     headless: options.headless,
     chromePath: options.chromePath,
   })
@@ -42,6 +43,8 @@ export async function withSlackContext<T>(
   try {
     return await callback({ context, page })
   } finally {
-    await connectedBrowser.close().catch(() => {})
+    // We close the context but NOT the browser, to keep the daemon running.
+    // The CDP connection will be dropped when the process exits.
+    await context.close().catch(() => {})
   }
 }

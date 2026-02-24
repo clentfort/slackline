@@ -1,5 +1,6 @@
 import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { loginToSlack } from '../../../service/slack/auth/login.js'
+import { startSlackDaemon } from '../../../service/playwright/daemon-manager.js'
 import type { GlobalOptions } from '../../index.js'
 
 export const command = 'login'
@@ -24,7 +25,14 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
     })
 
 export async function handler(argv: ArgumentsCamelCase<LoginOptions>): Promise<void> {
-  const { timeoutSeconds, manualConfirm } = argv
+  const { cdpUrl, timeoutSeconds, manualConfirm, chromePath } = argv
+
+  // Ensure the daemon is running in headed mode for interactive login
+  await startSlackDaemon({
+    cdpUrl,
+    headless: false,
+    chromePath,
+  })
 
   process.stdout.write('Opening Slack login window. Complete login in browser and keep it open until CLI confirms.\n')
   await loginToSlack({ timeoutSeconds, manualConfirm })
