@@ -2,6 +2,7 @@ import { withSlackContext } from '../../playwright/playwright-client.js'
 import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 import { createInterface } from 'node:readline/promises'
 
+import { SlackClient } from '../slack-client.js'
 import { getSlackProfile } from '../profile/get-profile.js'
 import { isLoggedInContext } from '../session/session-state.js'
 
@@ -25,7 +26,8 @@ export async function loginToSlack(options: LoginOptions): Promise<void> {
         ...options.browser,
       },
       async ({ context, page }) => {
-        await page.goto(options.workspaceUrl, { waitUntil: 'domcontentloaded' })
+        const client = new SlackClient(page)
+        await client.navigateToWorkspace(options.workspaceUrl)
 
         if (options.manualConfirm && process.stdin.isTTY) {
           return waitForManualConfirmation(context, timeoutMs)

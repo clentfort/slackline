@@ -1,8 +1,8 @@
 import { withSlackContext } from '../../playwright/playwright-client.js'
 import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
-import { openConversation, type SlackConversation } from '../conversation/open-conversation.js'
-import { isLoggedInPage } from '../session/session-state.js'
-import { pickLatestMessages, readVisibleMessages, type SlackMessage } from './read-visible-messages.js'
+import type { SlackConversation } from '../conversation/conversation-manager.js'
+import { SlackClient } from '../slack-client.js'
+import type { SlackMessage } from './message-manager.js'
 
 type GetRecentMessagesOptions = {
   workspaceUrl: string
@@ -24,25 +24,22 @@ export async function getRecentMessages(options: GetRecentMessagesOptions): Prom
       ...options.browser,
     },
     async ({ page }) => {
-      await page.goto(options.workspaceUrl, { waitUntil: 'domcontentloaded' })
+      const client = new SlackClient(page)
+      await client.navigateToWorkspace(options.workspaceUrl)
+      await client.ensureLoggedIn()
 
-      const loggedIn = await isLoggedInPage(page, 15000)
-      if (!loggedIn) {
-        throw new Error('Not logged in to Slack. Run `slackline auth login` first.')
-      }
-
-      const conversation = await openConversation(page, {
+      const conversation = await client.conversations.open({
         workspaceUrl: options.workspaceUrl,
         target: options.target,
       })
 
       await page.waitForTimeout(500)
-      const visible = await readVisibleMessages(page)
+      const visible = await client.messages.readVisible()
 
       return {
         target: options.target,
         conversation,
-        messages: pickLatestMessages(visible, options.limit),
+        messages: MessageManager.pickLatest(visible, options.limit),
       }
     },
   )
