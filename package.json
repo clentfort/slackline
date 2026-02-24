@@ -11,6 +11,7 @@
     "dev": "tsx src/cli.ts",
     "format": "oxfmt .",
     "lint": "oxlint .",
+    "prepare": "simple-git-hooks",
     "playwright:install": "playwright install chrome",
     "test": "vitest run",
     "typecheck": "tsgo --noEmit"
@@ -24,11 +25,20 @@
     "@types/node": "^24.5.2",
     "@types/yargs": "^17.0.33",
     "@typescript/native-preview": "^7.0.0-dev.20260224.1",
+    "lint-staged": "^16.2.7",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
+    "simple-git-hooks": "^2.13.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^4.0.18"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run typecheck && npx lint-staged"
+  },
+  "lint-staged": {
+    "*": "oxfmt --no-error-on-unmatched-pattern --write",
+    "*.{js,ts}": "oxlint --fix"
   },
   "engines": {
     "node": ">=20"
