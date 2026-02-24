@@ -31,7 +31,7 @@ type StartDaemonOptions = {
 const projectRoot = process.cwd()
 const stateDir = path.resolve(projectRoot, '.slackline')
 const daemonStatePath = path.resolve(stateDir, 'daemon-state.json')
-const sharedChromeProfileDir = path.resolve(stateDir, 'chrome-profile')
+const chromeProfileDir = path.resolve(stateDir, 'chrome-profile')
 const defaultChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 export async function startSlackDaemon(options: StartDaemonOptions): Promise<SlackDaemonStatus> {
@@ -52,12 +52,12 @@ export async function startSlackDaemon(options: StartDaemonOptions): Promise<Sla
   const { host, port } = parseCdpEndpoint(cdpUrl)
 
   await mkdir(stateDir, { recursive: true })
-  await mkdir(sharedChromeProfileDir, { recursive: true })
+  await mkdir(chromeProfileDir, { recursive: true })
 
   const args = [
     `--remote-debugging-port=${port}`,
     `--remote-debugging-address=${host}`,
-    `--user-data-dir=${sharedChromeProfileDir}`,
+    `--user-data-dir=${chromeProfileDir}`,
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-features=DialMediaRouteProvider',
@@ -76,7 +76,7 @@ export async function startSlackDaemon(options: StartDaemonOptions): Promise<Sla
   const state: SlackDaemonState = {
     pid: child.pid,
     cdpUrl,
-    profileDir: sharedChromeProfileDir,
+    profileDir: chromeProfileDir,
     chromePath,
     headless: options.headless,
     startedAt: new Date().toISOString(),
@@ -89,7 +89,7 @@ export async function startSlackDaemon(options: StartDaemonOptions): Promise<Sla
     cdpUrl,
     pid: child.pid,
     pidAlive: isPidAlive(child.pid),
-    profileDir: sharedChromeProfileDir,
+    profileDir: chromeProfileDir,
     headless: options.headless,
     startedAt: state.startedAt,
   }

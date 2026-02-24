@@ -37,4 +37,11 @@ export async function handler(argv: ArgumentsCamelCase<LoginOptions>): Promise<v
   process.stdout.write('Opening Slack login window. Complete login in browser and keep it open until CLI confirms.\n')
   await loginToSlack({ timeoutSeconds, manualConfirm })
   process.stdout.write('Login flow completed. Persistent browser profile is ready.\n')
+
+  // Switch back to headless mode after login
+  await startSlackDaemon({
+    cdpUrl,
+    headless: true,
+    chromePath,
+  })
 }
