@@ -5,18 +5,14 @@ import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 export { type SlackSearchResult, type SlackSearchItem }
 
 type SearchSlackOptions = {
-  workspaceUrl: string
   query: string
   limit: number
+  workspaceUrl?: string
   browser?: SlackBrowserOptions
 }
 
 export async function searchSlack(options: SearchSlackOptions): Promise<SlackSearchResult> {
-  return withSlackClient({
-    workspaceUrl: options.workspaceUrl,
-    ensureLoggedIn: true,
-    browser: options.browser,
-  }, async (client) => {
+  return withSlackClient(options, async (client) => {
     return client.search.search(options.query, options.limit)
   })
 }

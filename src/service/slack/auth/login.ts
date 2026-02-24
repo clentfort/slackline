@@ -6,9 +6,9 @@ import { getSlackProfile } from '../profile/get-profile.js'
 import { isLoggedInContext } from '../session/session-state.js'
 
 type LoginOptions = {
-  workspaceUrl: string
   timeoutSeconds: number
   manualConfirm: boolean
+  workspaceUrl?: string
   browser?: SlackBrowserOptions
 }
 
@@ -21,9 +21,9 @@ export async function loginToSlack(options: LoginOptions): Promise<void> {
   try {
     detected = await withSlackClient(
       {
-        workspaceUrl: options.workspaceUrl,
+        ...options,
         headless: false,
-        browser: options.browser,
+        skipLoginCheck: true,
       },
       async (client) => {
         if (options.manualConfirm && process.stdin.isTTY) {

@@ -4,9 +4,9 @@ import { withSlackClient } from '../with-slack-client.js'
 import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 
 type GetRecentMessagesOptions = {
-  workspaceUrl: string
   target: string
   limit: number
+  workspaceUrl?: string
   browser?: SlackBrowserOptions
 }
 
@@ -18,16 +18,9 @@ export type SlackRecentMessagesResult = {
 
 export async function getRecentMessages(options: GetRecentMessagesOptions): Promise<SlackRecentMessagesResult> {
   return withSlackClient(
-    {
-      workspaceUrl: options.workspaceUrl,
-      ensureLoggedIn: true,
-      browser: options.browser,
-    },
+    options,
     async (client) => {
-      const conversation = await client.conversations.open({
-        workspaceUrl: options.workspaceUrl,
-        target: options.target,
-      })
+      const conversation = await client.conversations.open(options)
 
       await client.page.waitForTimeout(500)
       const visible = await client.messages.readVisible()

@@ -1,4 +1,3 @@
-import { browserOptionsFromArgv } from '../browser-options.js'
 import { getSlackProfile } from '../../service/slack/profile/get-profile.js'
 
 export const command = 'profile'
@@ -12,11 +11,9 @@ export const builder = (yargs: any) =>
   })
 
 export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const workspaceUrl = String(argv.workspaceUrl)
   const asJson = Boolean(argv.json)
-  const browser = browserOptionsFromArgv(argv)
 
-  const profile = await getSlackProfile({ workspaceUrl, browser })
+  const profile = await getSlackProfile({})
 
   if (asJson) {
     process.stdout.write(`${JSON.stringify(profile, null, 2)}\n`)

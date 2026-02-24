@@ -5,15 +5,12 @@ import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 export { type SlackProfile }
 
 type GetProfileOptions = {
-  workspaceUrl: string
+  workspaceUrl?: string
   browser?: SlackBrowserOptions
 }
 
 export async function getSlackProfile(options: GetProfileOptions): Promise<SlackProfile> {
-  return withSlackClient({
-    workspaceUrl: options.workspaceUrl,
-    browser: options.browser,
-  }, async (client) => {
+  return withSlackClient(options, async (client) => {
     return client.profile.get()
   })
 }

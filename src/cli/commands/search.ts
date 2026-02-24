@@ -1,6 +1,5 @@
 import type { CommandModule } from 'yargs'
 
-import { browserOptionsFromArgv } from '../browser-options.js'
 import { searchSlack } from '../../service/slack/search/search-slack.js'
 
 export const command = 'search'
@@ -26,17 +25,13 @@ export const builder: CommandModule['builder'] = (yargs) =>
     })
 
 export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const workspaceUrl = String(argv.workspaceUrl)
   const query = String(argv.query)
   const limit = Number(argv.limit)
   const asJson = Boolean(argv.json)
-  const browser = browserOptionsFromArgv(argv)
 
   const result = await searchSlack({
-    workspaceUrl,
     query,
     limit,
-    browser,
   })
 
   if (asJson) {

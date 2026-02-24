@@ -1,30 +1,35 @@
 import { withSlackContext, type SlackBrowserOptions } from '../playwright/playwright-client.js'
 import { SlackClient } from './slack-client.js'
+import { getConfig } from './config.js'
 
 export type WithSlackClientOptions = {
   workspaceUrl?: string
   browser?: SlackBrowserOptions
   headless?: boolean
-  ensureLoggedIn?: boolean
+  skipLoginCheck?: boolean
 }
 
 export async function withSlackClient<T>(
-  options: WithSlackClientOptions,
+  options: WithSlackClientOptions = {},
   callback: (client: SlackClient) => Promise<T>,
 ): Promise<T> {
+  const config = getConfig()
+  const workspaceUrl = options.workspaceUrl ?? config.workspaceUrl
+  const browser = options.browser ?? config.browser
+
   return withSlackContext(
     {
       headless: options.headless ?? true,
-      ...options.browser,
+      ...browser,
     },
     async ({ page }) => {
       const client = new SlackClient(page)
 
-      if (options.workspaceUrl) {
-        await client.navigateToWorkspace(options.workspaceUrl)
+      if (workspaceUrl) {
+        await client.navigateToWorkspace(workspaceUrl)
       }
 
-      if (options.ensureLoggedIn) {
+      if (!options.skipLoginCheck) {
         await client.ensureLoggedIn()
       }
 
