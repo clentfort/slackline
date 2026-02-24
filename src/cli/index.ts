@@ -14,6 +14,7 @@ export interface GlobalOptions {
   browserMode: 'persistent' | 'attach' | 'daemon'
   browser: 'chrome' | 'firefox'
   cdpUrl: string
+  json: boolean
 }
 
 export async function run(argv: string[] = process.argv): Promise<void> {
@@ -55,6 +56,12 @@ export async function run(argv: string[] = process.argv): Promise<void> {
       type: 'string',
       default: 'http://127.0.0.1:9222',
       describe: 'CDP endpoint URL for attach/daemon mode',
+      global: true,
+    })
+    .option('json', {
+      type: 'boolean',
+      default: false,
+      describe: 'Emit machine-readable JSON output',
       global: true,
     })
     .commandDir(commandsDir, {

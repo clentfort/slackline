@@ -9,7 +9,6 @@ export const describe = 'Get the latest messages from a channel or DM'
 interface MessagesOptions extends GlobalOptions {
   target: string
   limit: number
-  json: boolean
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
@@ -23,11 +22,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
       type: 'number',
       default: 20,
       describe: 'How many recent messages to return (latest first)',
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Emit machine-readable JSON output',
     })
 
 export async function handler(argv: ArgumentsCamelCase<MessagesOptions>): Promise<void> {

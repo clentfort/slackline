@@ -8,7 +8,6 @@ export const describe = 'Search Slack messages via Playwright automation'
 interface SearchOptions extends GlobalOptions {
   query: string
   limit: number
-  json: boolean
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
@@ -21,11 +20,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
       type: 'number',
       default: 10,
       describe: 'Maximum number of matches to print',
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Emit machine-readable JSON output',
     })
 
 export async function handler(argv: ArgumentsCamelCase<SearchOptions>): Promise<void> {

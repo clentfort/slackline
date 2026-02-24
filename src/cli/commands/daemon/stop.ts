@@ -7,16 +7,9 @@ import type { GlobalOptions } from '../../index.js'
 export const command = 'stop'
 export const describe = 'Stop the Slack daemon browser'
 
-interface StopOptions extends GlobalOptions {
-  json: boolean
-}
+interface StopOptions extends GlobalOptions {}
 
-export const builder = (yargs: Argv<GlobalOptions>) =>
-  yargs.option('json', {
-    type: 'boolean',
-    default: false,
-    describe: 'Emit machine-readable JSON output',
-  })
+export const builder = (yargs: Argv<GlobalOptions>) => yargs
 
 export async function handler(argv: ArgumentsCamelCase<StopOptions>): Promise<void> {
   const { json: asJson } = argv

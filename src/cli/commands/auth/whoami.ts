@@ -6,16 +6,9 @@ export const command = 'whoami'
 export const aliases = ['profile']
 export const describe = 'Show current Slack login status and profile details'
 
-interface WhoAmIOptions extends GlobalOptions {
-  json: boolean
-}
+interface WhoAmIOptions extends GlobalOptions {}
 
-export const builder = (yargs: Argv<GlobalOptions>) =>
-  yargs.option('json', {
-    type: 'boolean',
-    default: false,
-    describe: 'Emit machine-readable JSON output',
-  })
+export const builder = (yargs: Argv<GlobalOptions>) => yargs
 
 export async function handler(argv: ArgumentsCamelCase<WhoAmIOptions>): Promise<void> {
   const { json: asJson } = argv

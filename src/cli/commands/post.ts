@@ -8,7 +8,6 @@ export const describe = 'Post a message to a Slack channel or DM'
 interface PostOptions extends GlobalOptions {
   target: string
   message: string
-  json: boolean
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
@@ -20,11 +19,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
     .positional('message', {
       type: 'string',
       describe: 'Message text to post',
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Emit machine-readable JSON output',
     })
 
 export async function handler(argv: ArgumentsCamelCase<PostOptions>): Promise<void> {

@@ -11,7 +11,6 @@ export const describe = 'Start the Slack daemon browser'
 interface StartOptions extends GlobalOptions {
   headless: boolean
   chromePath?: string
-  json: boolean
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
@@ -24,11 +23,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
     .option('chrome-path', {
       type: 'string',
       describe: 'Path to Chrome executable for daemon start',
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Emit machine-readable JSON output',
     })
 
 export async function handler(argv: ArgumentsCamelCase<StartOptions>): Promise<void> {

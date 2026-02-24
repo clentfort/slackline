@@ -7,7 +7,6 @@ export const describe = 'Listen for Slack events and forward them to a webhook'
 
 interface ListenOptions extends GlobalOptions {
   webhook: string
-  json: boolean
 }
 
 export const builder = (yargs: Argv<GlobalOptions>) =>
@@ -16,11 +15,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
       type: 'string',
       demandOption: true,
       describe: 'Webhook URL to forward notifications to',
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Emit machine-readable JSON output',
     })
 
 export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<void> {
