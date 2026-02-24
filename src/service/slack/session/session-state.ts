@@ -1,5 +1,7 @@
 import type { BrowserContext, Page } from 'playwright'
 
+import { normalize } from '../utils/text.js'
+
 const loggedInSelectors = [
   'button[data-qa="top_nav_search"]',
   'button[data-qa="user-button"]',
@@ -134,12 +136,4 @@ function isSlackClientLikeUrl(url: string): boolean {
 
 function isSlackAuthUrl(url: string): boolean {
   return /workspace-signin|\/signin|\/auth(\?|\/|$)|\/login\//.test(url)
-}
-
-function normalize(value: string | undefined): string {
-  if (!value) {
-    return ''
-  }
-
-  return value.replace(/\s+/g, ' ').trim()
 }

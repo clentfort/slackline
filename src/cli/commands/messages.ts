@@ -1,4 +1,3 @@
-import { browserOptionsFromArgv } from '../browser-options.js'
 import { getRecentMessages } from '../../service/slack/messages/get-recent-messages.js'
 
 export const command = 'messages'
@@ -26,17 +25,13 @@ export const builder = (yargs: any) =>
     })
 
 export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const workspaceUrl = String(argv.workspaceUrl)
   const target = String(argv.target)
   const limit = Number(argv.limit)
   const asJson = Boolean(argv.json)
-  const browser = browserOptionsFromArgv(argv)
 
   const result = await getRecentMessages({
-    workspaceUrl,
     target,
     limit,
-    browser,
   })
 
   if (asJson) {

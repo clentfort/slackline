@@ -1,0 +1,119 @@
+import { escapeRegExp } from '../utils/text.js'
+import { SlackComponent } from '../slack-component.js'
+import { BROWSER_HELPERS } from '../utils/browser-helpers.js'
+
+export type SlackConversation = {
+  type: 'channel' | 'dm' | 'unknown'
+  id?: string
+  name?: string
+  url: string
+}
+
+export class ConversationManager extends SlackComponent {
+  /**
+   * Opens a conversation by name or ID.
+   * @param options.target Channel/DM name (e.g. 'general', '@jules') or Slack ID (e.g. 'C12345').
+   */
+  async open(options: { target: string }): Promise<SlackConversation> {
+    const target = this.normalizeTarget(options.target)
+
+    if (target) {
+      await this.page
+        .waitForFunction(() => document.querySelectorAll('[data-qa^="channel_sidebar_name_"]').length > 0, {
+          timeout: 12000,
+        })
+        .catch(() => {})
+
+      const clicked = await this.clickSidebarConversation(target)
+      if (!clicked) {
+        throw new Error(`Could not find Slack channel or DM in sidebar: ${target}`)
+      }
+    }
+
+    await this.page.waitForTimeout(900)
+    await this.page
+      .locator('[data-qa="message_pane"], [data-qa="message_input"]')
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 })
+
+    return this.readActive()
+  }
+
+  async readActive(): Promise<SlackConversation> {
+    const details = await this.page.evaluate((helpers) => {
+      const normalize = new Function(`return ${helpers.normalize}`)()
+
+      const url = window.location.href
+      const pathMatch = window.location.pathname.match(/\/client\/[^/]+\/([^/?]+)/)
+      const id = pathMatch?.[1]
+
+      const nameFromHeader =
+        normalize(document.querySelector('[data-qa="channel_name"]')?.textContent) ??
+        normalize(document.querySelector('[data-qa="channel_name_button"]')?.textContent)
+
+      const inputLabel = normalize(
+        document.querySelector('[data-qa="message_input"] [data-qa="texty_input"]')?.getAttribute('aria-label'),
+      )
+
+      const fromInput = inputLabel
+        ?.replace(/^nachricht an\s+/i, '')
+        ?.replace(/^message\s+to\s+/i, '')
+        ?.trim()
+
+      return {
+        id,
+        url,
+        name: nameFromHeader ?? normalize(fromInput),
+      }
+    }, BROWSER_HELPERS)
+
+    const type =
+      details.id?.startsWith('D')
+        ? 'dm'
+        : details.id?.startsWith('C') || details.id?.startsWith('G')
+          ? 'channel'
+          : 'unknown'
+
+    return {
+      type,
+      id: details.id,
+      name: details.name,
+      url: details.url,
+    }
+  }
+
+  private async clickSidebarConversation(target: string): Promise<boolean> {
+    const normalizedTarget = target.replace(/^[@#]/, '').trim()
+    if (!normalizedTarget) {
+      return false
+    }
+
+    const selectors = [
+      `[data-qa="channel_sidebar_name_${normalizedTarget}"]`,
+      '[data-qa^="channel_sidebar_name_"]',
+    ]
+
+    const escaped = escapeRegExp(normalizedTarget)
+    const exactPattern = new RegExp(`^${escaped}$`, 'i')
+
+    for (const selector of selectors) {
+      const exactMatch = this.page.locator(selector).filter({ hasText: exactPattern }).first()
+      if ((await exactMatch.count()) > 0) {
+        await exactMatch.click({ force: true })
+        return true
+      }
+
+      const partialMatch = this.page.locator(selector).filter({ hasText: normalizedTarget }).first()
+      if ((await partialMatch.count()) > 0) {
+        await partialMatch.click({ force: true })
+        return true
+      }
+    }
+
+    return false
+  }
+
+  private normalizeTarget(target: string | undefined): string {
+    return (target ?? '').trim()
+  }
+}

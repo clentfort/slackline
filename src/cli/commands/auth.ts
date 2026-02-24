@@ -1,5 +1,5 @@
-import { browserOptionsFromArgv } from '../browser-options.js'
 import { loginToSlack } from '../../service/slack/auth/login.js'
+import { getConfig } from '../../service/slack/config.js'
 import {
   getSlackDaemonStatus,
   startSlackDaemon,
@@ -35,25 +35,24 @@ export const builder = (yargs: any) =>
 
 export async function handler(argv: Record<string, unknown>): Promise<void> {
   const action = String(argv.action)
-  const workspaceUrl = String(argv.workspaceUrl)
-  const browser = browserOptionsFromArgv(argv)
+  const config = getConfig()
 
   if (action === 'login') {
     const timeoutSeconds = Number(argv.timeoutSeconds)
     const manualConfirm = Boolean(argv.manualConfirm)
 
-    if (browser.mode === 'daemon') {
-      await ensureInteractiveDaemon(browser.cdpUrl)
+    if (config.browser.mode === 'daemon') {
+      await ensureInteractiveDaemon(config.browser.cdpUrl)
     }
 
     process.stdout.write('Opening Slack login window. Complete login in browser and keep it open until CLI confirms.\n')
-    await loginToSlack({ workspaceUrl, timeoutSeconds, manualConfirm, browser })
+    await loginToSlack({ timeoutSeconds, manualConfirm })
     process.stdout.write('Login flow completed. Persistent browser profile is ready.\n')
     return
   }
 
   const asJson = Boolean(argv.json)
-  const profile = await getSlackProfile({ workspaceUrl, browser })
+  const profile = await getSlackProfile({})
 
   if (asJson) {
     process.stdout.write(`${JSON.stringify(profile, null, 2)}\n`)

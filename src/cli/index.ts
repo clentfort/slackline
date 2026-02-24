@@ -4,6 +4,8 @@ import { hideBin } from 'yargs/helpers'
 import yargs from 'yargs/yargs'
 
 import { defaultSlackWorkspaceUrl } from '../service/slack/defaults.js'
+import { setConfig } from '../service/slack/config.js'
+import { browserOptionsFromArgv } from './browser-options.js'
 
 export async function run(argv: string[] = process.argv): Promise<void> {
   const commandsDir = fileURLToPath(new URL('./commands', import.meta.url))
@@ -46,6 +48,12 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     .commandDir(commandsDir, {
       extensions: ['js', 'ts'],
       exclude: /\.test\.(ts|js)$/,
+    })
+    .middleware((argv) => {
+      setConfig({
+        workspaceUrl: argv.workspaceUrl as string,
+        browser: browserOptionsFromArgv(argv),
+      })
     })
 
   await cli

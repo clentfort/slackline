@@ -1,4 +1,3 @@
-import { browserOptionsFromArgv } from '../browser-options.js'
 import { postMessage } from '../../service/slack/messages/post-message.js'
 
 export const command = 'post'
@@ -25,17 +24,13 @@ export const builder = (yargs: any) =>
     })
 
 export async function handler(argv: Record<string, unknown>): Promise<void> {
-  const workspaceUrl = String(argv.workspaceUrl)
   const target = String(argv.target)
   const message = String(argv.message)
   const asJson = Boolean(argv.json)
-  const browser = browserOptionsFromArgv(argv)
 
   const result = await postMessage({
-    workspaceUrl,
     target,
     message,
-    browser,
   })
 
   if (asJson) {
