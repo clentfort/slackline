@@ -1,8 +1,7 @@
-import { withSlackContext } from '../../playwright/playwright-client.js'
-import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 import type { SlackConversation } from '../conversation/conversation-manager.js'
-import { SlackClient } from '../slack-client.js'
 import type { SlackMessage } from './message-manager.js'
+import { withSlackClient } from '../with-slack-client.js'
+import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 
 type PostMessageOptions = {
   workspaceUrl: string
@@ -18,16 +17,13 @@ export type SlackPostMessageResult = {
 }
 
 export async function postMessage(options: PostMessageOptions): Promise<SlackPostMessageResult> {
-  return withSlackContext(
+  return withSlackClient(
     {
-      headless: true,
-      ...options.browser,
+      workspaceUrl: options.workspaceUrl,
+      ensureLoggedIn: true,
+      browser: options.browser,
     },
-    async ({ page }) => {
-      const client = new SlackClient(page)
-      await client.navigateToWorkspace(options.workspaceUrl)
-      await client.ensureLoggedIn()
-
+    async (client) => {
       const conversation = await client.conversations.open({
         workspaceUrl: options.workspaceUrl,
         target: options.target,

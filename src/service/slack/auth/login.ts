@@ -1,8 +1,7 @@
-import { withSlackContext } from '../../playwright/playwright-client.js'
-import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 import { createInterface } from 'node:readline/promises'
 
-import { SlackClient } from '../slack-client.js'
+import { withSlackClient } from '../with-slack-client.js'
+import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 import { getSlackProfile } from '../profile/get-profile.js'
 import { isLoggedInContext } from '../session/session-state.js'
 
@@ -20,23 +19,21 @@ export async function loginToSlack(options: LoginOptions): Promise<void> {
   let detected = false
 
   try {
-    detected = await withSlackContext(
+    detected = await withSlackClient(
       {
+        workspaceUrl: options.workspaceUrl,
         headless: false,
-        ...options.browser,
+        browser: options.browser,
       },
-      async ({ context, page }) => {
-        const client = new SlackClient(page)
-        await client.navigateToWorkspace(options.workspaceUrl)
-
+      async (client) => {
         if (options.manualConfirm && process.stdin.isTTY) {
-          return waitForManualConfirmation(context, timeoutMs)
+          return waitForManualConfirmation(client.page.context(), timeoutMs)
         }
 
         const deadline = Date.now() + timeoutMs
 
         while (Date.now() < deadline) {
-          if (await isLoggedInContext(context, 1200)) {
+          if (await isLoggedInContext(client.page.context(), 1200)) {
             return true
           }
 

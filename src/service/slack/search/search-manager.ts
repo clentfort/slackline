@@ -1,5 +1,5 @@
 import type { Locator } from 'playwright'
-import { SlackComponent } from '../slack-client.js'
+import { SlackComponent } from '../slack-component.js'
 
 export type SlackSearchItem = {
   user?: string

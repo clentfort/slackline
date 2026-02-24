@@ -1,5 +1,5 @@
 import { escapeRegExp } from '../utils/text.js'
-import { SlackComponent, type SlackClient } from '../slack-client.js'
+import { SlackComponent } from '../slack-component.js'
 
 export type SlackConversation = {
   type: 'channel' | 'dm' | 'unknown'
@@ -13,7 +13,9 @@ export class ConversationManager extends SlackComponent {
     const target = this.normalizeTarget(options.target)
     const targetUrl = this.isAbsoluteUrl(target) ? target : options.workspaceUrl
 
-    await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' })
+    if (this.page.url() !== targetUrl) {
+      await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' })
+    }
 
     if (target && !this.isAbsoluteUrl(target)) {
       await this.page

@@ -1,4 +1,4 @@
-import { SlackComponent } from '../slack-client.js'
+import { SlackComponent } from '../slack-component.js'
 import { extractNameFromUserLabel, extractWorkspaceName } from '../session/session-state.js'
 
 export type SlackProfile = {

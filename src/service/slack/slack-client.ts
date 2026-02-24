@@ -5,14 +5,6 @@ import { MessageManager } from './messages/message-manager.js'
 import { SearchManager } from './search/search-manager.js'
 import { ProfileManager } from './profile/profile-manager.js'
 
-export abstract class SlackComponent {
-  constructor(protected readonly client: SlackClient) {}
-
-  protected get page(): Page {
-    return this.client.page
-  }
-}
-
 export class SlackClient {
   public readonly conversations: ConversationManager
   public readonly messages: MessageManager

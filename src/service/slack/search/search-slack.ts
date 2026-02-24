@@ -1,7 +1,6 @@
-import { withSlackContext } from '../../playwright/playwright-client.js'
-import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
-import { SlackClient } from '../slack-client.js'
 import { type SlackSearchResult, type SlackSearchItem } from './search-manager.js'
+import { withSlackClient } from '../with-slack-client.js'
+import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 
 export { type SlackSearchResult, type SlackSearchItem }
 
@@ -13,14 +12,11 @@ type SearchSlackOptions = {
 }
 
 export async function searchSlack(options: SearchSlackOptions): Promise<SlackSearchResult> {
-  return withSlackContext({
-    headless: true,
-    ...options.browser,
-  }, async ({ page }) => {
-    const client = new SlackClient(page)
-    await client.navigateToWorkspace(options.workspaceUrl)
-    await client.ensureLoggedIn()
-
+  return withSlackClient({
+    workspaceUrl: options.workspaceUrl,
+    ensureLoggedIn: true,
+    browser: options.browser,
+  }, async (client) => {
     return client.search.search(options.query, options.limit)
   })
 }

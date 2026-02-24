@@ -1,7 +1,6 @@
-import { withSlackContext } from '../../playwright/playwright-client.js'
-import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
-import { SlackClient } from '../slack-client.js'
 import { type SlackProfile } from './profile-manager.js'
+import { withSlackClient } from '../with-slack-client.js'
+import type { SlackBrowserOptions } from '../../playwright/playwright-client.js'
 
 export { type SlackProfile }
 
@@ -11,13 +10,10 @@ type GetProfileOptions = {
 }
 
 export async function getSlackProfile(options: GetProfileOptions): Promise<SlackProfile> {
-  return withSlackContext({
-    headless: true,
-    ...options.browser,
-  }, async ({ page }) => {
-    const client = new SlackClient(page)
-    await client.navigateToWorkspace(options.workspaceUrl)
-
+  return withSlackClient({
+    workspaceUrl: options.workspaceUrl,
+    browser: options.browser,
+  }, async (client) => {
     return client.profile.get()
   })
 }
