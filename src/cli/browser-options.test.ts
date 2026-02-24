@@ -9,6 +9,7 @@ describe('browserOptionsFromArgv', () => {
     browserMode: 'persistent',
     browser: 'chrome',
     cdpUrl: 'http://127.0.0.1:9222',
+    json: false,
   }
 
   it('should correctly transform default options', () => {
