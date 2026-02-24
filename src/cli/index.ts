@@ -17,10 +17,10 @@ export interface GlobalOptions {
   json: boolean
 }
 
-export async function run(argv: string[] = process.argv): Promise<void> {
+export function createParser(options: { skipCommandDir?: boolean } = {}): Argv<GlobalOptions> {
   const commandsDir = fileURLToPath(new URL('./commands', import.meta.url))
 
-  const cli = yargs(hideBin(argv))
+  const parser = yargs()
     .scriptName('slackline')
     .env('SLACKLINE')
     .option('verbose', {
@@ -64,32 +64,40 @@ export async function run(argv: string[] = process.argv): Promise<void> {
       describe: 'Emit machine-readable JSON output',
       global: true,
     })
-    .commandDir(commandsDir, {
+
+  if (!options.skipCommandDir) {
+    parser.commandDir(commandsDir, {
       extensions: ['js', 'ts'],
       exclude: /\.test\.(ts|js)$/,
     })
-    .middleware((argv) => {
+  }
+
+  parser.middleware((argv) => {
       setConfig({
         workspaceUrl: argv.workspaceUrl as string,
         browser: browserOptionsFromArgv(argv as unknown as GlobalOptions),
       })
     })
-
-  await (cli as unknown as Argv<GlobalOptions>)
     .demandCommand(1, 'Provide a command')
     .strict()
     .help()
-    .fail((message: string, error: Error | undefined, yargsInstance) => {
-      if (error) {
-        process.stderr.write(`${error.message}\n`)
-        process.exit(1)
-      }
 
-      process.stderr.write(`${message}\n`)
-      yargsInstance.showHelp()
+  return parser as unknown as Argv<GlobalOptions>
+}
+
+export async function run(argv: string[] = process.argv): Promise<void> {
+  const parser = createParser().fail((message: string, error: Error | undefined, yargsInstance) => {
+    if (error) {
+      process.stderr.write(`${error.message}\n`)
       process.exit(1)
-    })
-    .parseAsync()
+    }
+
+    process.stderr.write(`${message}\n`)
+    yargsInstance.showHelp()
+    process.exit(1)
+  })
+
+  await parser.parseAsync(hideBin(argv))
 }
 
 const thisFilePath = fileURLToPath(import.meta.url)
