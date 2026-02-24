@@ -20,7 +20,7 @@ export async function postMessage(options: PostMessageOptions): Promise<SlackPos
   return withSlackClient(
     options,
     async (client) => {
-      const conversation = await client.conversations.open(options)
+      const conversation = await client.conversations.open({ target: options.target })
 
       const posted = await client.messages.post(options.message)
 

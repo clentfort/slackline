@@ -20,7 +20,7 @@ export async function getRecentMessages(options: GetRecentMessagesOptions): Prom
   return withSlackClient(
     options,
     async (client) => {
-      const conversation = await client.conversations.open(options)
+      const conversation = await client.conversations.open({ target: options.target })
 
       await client.page.waitForTimeout(500)
       const visible = await client.messages.readVisible()

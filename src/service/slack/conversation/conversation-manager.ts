@@ -8,12 +8,10 @@ export type SlackConversation = {
   url: string
 }
 
-import { getConfig } from '../config.js'
-
 export class ConversationManager extends SlackComponent {
-  async open(options: { workspaceUrl?: string; target?: string }): Promise<SlackConversation> {
+  async open(options: { target?: string } = {}): Promise<SlackConversation> {
     const target = this.normalizeTarget(options.target)
-    const workspaceUrl = options.workspaceUrl ?? getConfig().workspaceUrl
+    const workspaceUrl = this.config.workspaceUrl
     const targetUrl = this.isAbsoluteUrl(target) ? target : workspaceUrl
 
     if (workspaceUrl && this.page.url() !== targetUrl) {
