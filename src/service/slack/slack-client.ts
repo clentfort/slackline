@@ -4,6 +4,7 @@ import { ConversationManager } from './conversation/conversation-manager.js'
 import { MessageManager } from './messages/message-manager.js'
 import { SearchManager } from './search/search-manager.js'
 import { ProfileManager } from './profile/profile-manager.js'
+import { getConfig } from './config.js'
 
 export class SlackClient {
   public readonly conversations: ConversationManager
@@ -18,7 +19,8 @@ export class SlackClient {
     this.profile = new ProfileManager(this)
   }
 
-  async navigateToWorkspace(workspaceUrl: string): Promise<void> {
+  async navigateToWorkspaceRoot(): Promise<void> {
+    const workspaceUrl = getConfig().workspaceUrl
     await this.page.goto(workspaceUrl, { waitUntil: 'domcontentloaded' })
   }
 

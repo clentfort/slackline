@@ -1,5 +1,6 @@
 import { escapeRegExp } from '../utils/text.js'
 import { SlackComponent } from '../slack-component.js'
+import { BROWSER_HELPERS } from '../utils/browser-helpers.js'
 
 export type SlackConversation = {
   type: 'channel' | 'dm' | 'unknown'
@@ -9,16 +10,14 @@ export type SlackConversation = {
 }
 
 export class ConversationManager extends SlackComponent {
+  /**
+   * Opens a conversation by name or ID.
+   * @param options.target Channel/DM name (e.g. 'general', '@jules') or Slack ID (e.g. 'C12345').
+   */
   async open(options: { target: string }): Promise<SlackConversation> {
     const target = this.normalizeTarget(options.target)
-    const workspaceUrl = this.config.workspaceUrl
-    const targetUrl = this.isAbsoluteUrl(target) ? target : workspaceUrl
 
-    if (this.page.url() !== targetUrl) {
-      await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' })
-    }
-
-    if (target && !this.isAbsoluteUrl(target)) {
+    if (target) {
       await this.page
         .waitForFunction(() => document.querySelectorAll('[data-qa^="channel_sidebar_name_"]').length > 0, {
           timeout: 12000,
@@ -41,11 +40,8 @@ export class ConversationManager extends SlackComponent {
   }
 
   async readActive(): Promise<SlackConversation> {
-    const details = await this.page.evaluate(() => {
-      const normalize = (value: string | null | undefined): string | undefined => {
-        const cleaned = (value ?? '').replace(/\s+/g, ' ').trim()
-        return cleaned.length > 0 ? cleaned : undefined
-      }
+    const details = await this.page.evaluate((helpers) => {
+      const normalize = new Function(`return ${helpers.normalize}`)()
 
       const url = window.location.href
       const pathMatch = window.location.pathname.match(/\/client\/[^/]+\/([^/?]+)/)
@@ -69,7 +65,7 @@ export class ConversationManager extends SlackComponent {
         url,
         name: nameFromHeader ?? normalize(fromInput),
       }
-    })
+    }, BROWSER_HELPERS)
 
     const type =
       details.id?.startsWith('D')
@@ -115,10 +111,6 @@ export class ConversationManager extends SlackComponent {
     }
 
     return false
-  }
-
-  private isAbsoluteUrl(value: string): boolean {
-    return /^https?:\/\//i.test(value)
   }
 
   private normalizeTarget(target: string | undefined): string {

@@ -1,5 +1,6 @@
 import type { Locator } from 'playwright'
 import { SlackComponent } from '../slack-component.js'
+import { BROWSER_HELPERS } from '../utils/browser-helpers.js'
 
 export type SlackSearchItem = {
   user?: string
@@ -28,14 +29,9 @@ export class SearchManager extends SlackComponent {
 
     const records = await this.page
       .locator('[data-qa="search_result"]')
-      .evaluateAll((nodes, query) => {
-        const normalize = (value: string | null | undefined): string =>
-          (value ?? '').replace(/\s+/g, ' ').trim()
-
-        const parseUnixSeconds = (value: string | null | undefined): number | undefined => {
-          const numeric = Number.parseFloat((value ?? '').trim())
-          return Number.isFinite(numeric) ? numeric : undefined
-        }
+      .evaluateAll((nodes, { query, helpers }) => {
+        const normalize = new Function(`return ${helpers.normalize}`)()
+        const parseUnixSeconds = new Function(`return ${helpers.parseUnixSeconds}`)()
 
         const queryLower = query.toLowerCase()
         const seen = new Set<string>()
@@ -93,7 +89,7 @@ export class SearchManager extends SlackComponent {
         }
 
         return items
-      }, query)
+      }, { query, helpers: BROWSER_HELPERS })
 
     return {
       query: query,

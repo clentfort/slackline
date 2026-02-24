@@ -1,5 +1,6 @@
 import type { Locator } from 'playwright'
 import { SlackComponent } from '../slack-component.js'
+import { BROWSER_HELPERS } from '../utils/browser-helpers.js'
 
 export type SlackMessage = {
   user?: string
@@ -11,13 +12,9 @@ export type SlackMessage = {
 
 export class MessageManager extends SlackComponent {
   async readVisible(): Promise<SlackMessage[]> {
-    return this.page.locator('[data-qa="message_container"]').evaluateAll((nodes) => {
-      const normalize = (value: string | null | undefined): string => (value ?? '').replace(/\s+/g, ' ').trim()
-
-      const parseUnixSeconds = (value: string | null | undefined): number | undefined => {
-        const numeric = Number.parseFloat((value ?? '').trim())
-        return Number.isFinite(numeric) ? numeric : undefined
-      }
+    return this.page.locator('[data-qa="message_container"]').evaluateAll((nodes, helpers) => {
+      const normalize = new Function(`return ${helpers.normalize}`)()
+      const parseUnixSeconds = new Function(`return ${helpers.parseUnixSeconds}`)()
 
       const parsed: {
         user?: string
@@ -66,7 +63,7 @@ export class MessageManager extends SlackComponent {
       }
 
       return parsed
-    })
+    }, BROWSER_HELPERS)
   }
 
   async post(text: string): Promise<SlackMessage> {

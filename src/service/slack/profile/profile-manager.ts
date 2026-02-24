@@ -1,5 +1,6 @@
 import { SlackComponent } from '../slack-component.js'
 import { extractNameFromUserLabel, extractWorkspaceName } from '../session/session-state.js'
+import { BROWSER_HELPERS } from '../utils/browser-helpers.js'
 
 export type SlackProfile = {
   loggedIn: boolean
@@ -22,14 +23,8 @@ export class ProfileManager extends SlackComponent {
       })
       .catch(() => {})
 
-    const details = await this.page.evaluate(() => {
-      const normalize = (value: string | null | undefined): string | undefined => {
-        if (!value) {
-          return undefined
-        }
-        const cleaned = value.replace(/\s+/g, ' ').trim()
-        return cleaned.length > 0 ? cleaned : undefined
-      }
+    const details = await this.page.evaluate((helpers) => {
+      const normalize = new Function(`return ${helpers.normalize}`)()
 
       const userButton = document.querySelector('button[data-qa="user-button"]')
       const searchButton = document.querySelector('button[data-qa="top_nav_search"]')
@@ -40,7 +35,7 @@ export class ProfileManager extends SlackComponent {
         searchButtonAria: normalize(searchButton?.getAttribute('aria-label')),
         title: normalize(document.title),
       }
-    })
+    }, BROWSER_HELPERS)
 
     const name = extractNameFromUserLabel(details.userLabel)
     const workspace = extractWorkspaceName({

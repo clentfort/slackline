@@ -23,9 +23,7 @@ export async function withSlackClient<T>(
     async ({ page }) => {
       const client = new SlackClient(page)
 
-      if (workspaceUrl) {
-        await client.navigateToWorkspace(workspaceUrl)
-      }
+      await client.navigateToWorkspaceRoot()
 
       if (!options.skipLoginCheck) {
         await client.ensureLoggedIn()
