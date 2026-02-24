@@ -4,6 +4,7 @@ import { ConversationManager } from './conversation/conversation-manager.js'
 import { MessageManager } from './messages/message-manager.js'
 import { SearchManager } from './search/search-manager.js'
 import { ProfileManager } from './profile/profile-manager.js'
+import { NotificationManager } from './notifications/notification-manager.js'
 import { getConfig } from './config.js'
 
 export class SlackClient {
@@ -11,12 +12,14 @@ export class SlackClient {
   public readonly messages: MessageManager
   public readonly search: SearchManager
   public readonly profile: ProfileManager
+  public readonly notifications: NotificationManager
 
   constructor(public readonly page: Page) {
     this.conversations = new ConversationManager(this)
     this.messages = new MessageManager(this)
     this.search = new SearchManager(this)
     this.profile = new ProfileManager(this)
+    this.notifications = new NotificationManager(this)
   }
 
   async navigateToWorkspaceRoot(): Promise<void> {
