@@ -28,13 +28,15 @@ export async function run(argv: string[] = process.argv): Promise<void> {
       describe: 'Enable verbose CLI logging',
       global: true,
     })
-    .option('workspace-url', {
+    .option('workspaceUrl', {
+      alias: 'workspace-url',
       type: 'string',
       describe: 'Slack workspace/channel URL to use as entry point',
       default: defaultSlackWorkspaceUrl,
       global: true,
     })
-    .option('browser-mode', {
+    .option('browserMode', {
+      alias: 'browser-mode',
       type: 'string',
       choices: ['persistent', 'attach', 'daemon'] as const,
       default: 'persistent' as const,
@@ -48,7 +50,8 @@ export async function run(argv: string[] = process.argv): Promise<void> {
       describe: 'Browser engine for persistent mode',
       global: true,
     })
-    .option('cdp-url', {
+    .option('cdpUrl', {
+      alias: 'cdp-url',
       type: 'string',
       default: 'http://127.0.0.1:9222',
       describe: 'CDP endpoint URL for attach/daemon mode',
@@ -65,7 +68,7 @@ export async function run(argv: string[] = process.argv): Promise<void> {
       })
     })
 
-  await (cli as Argv<GlobalOptions>)
+  await (cli as unknown as Argv<GlobalOptions>)
     .demandCommand(1, 'Provide a command')
     .strict()
     .help()
