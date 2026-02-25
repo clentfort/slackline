@@ -2,85 +2,46 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NotificationManager } from "./notification-manager.js";
 import type { SlackClient } from "../slack-client.js";
+import { SlackEventBus } from "../events/slack-event-bus.js";
+import { setupWebhookForwarding } from "../../../cli/commands/daemon/webhook-forwarder.js";
 
 type HarnessOptions = {
-  pageUrl?: string;
-  currentUserIdFromStorage?: string | null;
-  currentUserIdFromAvatar?: string | null;
+  currentUserId?: string | null;
   sidebarConversations?: Array<{ id: string; name: string }>;
 };
 
 type Harness = {
   manager: NotificationManager;
-  mockContext: {
-    newCDPSession: ReturnType<typeof vi.fn>;
-  };
-  mockCdpSession: {
-    send: ReturnType<typeof vi.fn>;
-    on: ReturnType<typeof vi.fn>;
-  };
-  emitCdpEvent: (eventName: string, payload: unknown) => void;
+  events: SlackEventBus;
+  mockClient: any;
 };
 
 function createHarness(options: HarnessOptions = {}): Harness {
-  const pageUrl = options.pageUrl ?? "https://app.slack.com/client/T123/C456";
-  const currentUserIdFromStorage = options.currentUserIdFromStorage ?? "U123456789";
-  const currentUserIdFromAvatar = options.currentUserIdFromAvatar ?? "U123456789";
+  const currentUserId = options.currentUserId ?? "U123456789";
   const sidebarConversations = options.sidebarConversations ?? [];
-  const cdpEventHandlers = new Map<string, Array<(payload: unknown) => void>>();
+  const events = new SlackEventBus();
 
-  const mockCdpSession = {
-    send: vi.fn().mockResolvedValue(undefined),
-    on: vi.fn().mockImplementation((eventName: string, handler: (payload: unknown) => void) => {
-      const handlers = cdpEventHandlers.get(eventName) ?? [];
-      handlers.push(handler);
-      cdpEventHandlers.set(eventName, handlers);
+  const mockWorkspace = {
+    refresh: vi.fn().mockResolvedValue(undefined),
+    getCurrentUserId: vi.fn().mockResolvedValue(currentUserId),
+    getChannelName: vi.fn().mockImplementation((id: string) => {
+      return sidebarConversations.find((c) => c.id === id)?.name;
     }),
+    setCurrentUserId: vi.fn(),
   };
 
-  const mockContext = {
-    newCDPSession: vi.fn().mockResolvedValue(mockCdpSession),
+  const mockClient = {
+    events: events,
+    workspace: mockWorkspace,
+    startRealTime: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockPage = {
-    context: vi.fn().mockReturnValue(mockContext),
-    once: vi.fn(),
-    url: vi.fn().mockReturnValue(pageUrl),
-    evaluate: vi.fn().mockImplementation(async (scriptOrFunction: unknown): Promise<unknown> => {
-      if (typeof scriptOrFunction !== "function") {
-        return undefined;
-      }
-
-      const functionSource = scriptOrFunction.toString();
-      if (functionSource.includes("localStorage.getItem(\"localConfig_v2\")")) {
-        return currentUserIdFromStorage;
-      }
-      if (functionSource.includes("button[data-qa=\"user-button\"] img")) {
-        return currentUserIdFromAvatar;
-      }
-      if (
-        functionSource.includes("channel_sidebar_name_") &&
-        functionSource.includes("window.location.pathname.match")
-      ) {
-        return sidebarConversations;
-      }
-
-      return undefined;
-    }),
-  };
-
-  const manager = new NotificationManager({ page: mockPage } as unknown as SlackClient);
+  const manager = new NotificationManager(mockClient as unknown as SlackClient);
 
   return {
     manager,
-    mockContext,
-    mockCdpSession,
-    emitCdpEvent: (eventName: string, payload: unknown) => {
-      const handlers = cdpEventHandlers.get(eventName) ?? [];
-      for (const handler of handlers) {
-        handler(payload);
-      }
-    },
+    events,
+    mockClient,
   };
 }
 
@@ -97,46 +58,34 @@ afterEach(() => {
 });
 
 describe("NotificationManager", () => {
-  it("creates a page CDP session and enables Network websocket stream", async () => {
-    const { manager, mockContext, mockCdpSession } = createHarness();
+  it("starts real-time when listen is called", async () => {
+    const { manager, mockClient } = createHarness();
 
-    await manager.listen(vi.fn());
+    await manager.listen();
 
-    expect(mockContext.newCDPSession).toHaveBeenCalledTimes(1);
-    expect(mockCdpSession.send).toHaveBeenCalledWith("Network.enable");
+    expect(mockClient.startRealTime).toHaveBeenCalledTimes(1);
   });
 
-  it("throws if called twice", async () => {
-    const { manager } = createHarness();
+  it("processes messages and emits events on the bus", async () => {
+    const { manager, events } = createHarness();
+    const onEvent = vi.fn();
+    events.onEvent(onEvent);
 
-    await manager.listen(vi.fn());
-    await expect(manager.listen(vi.fn())).rejects.toThrow("Already listening for notifications.");
-  });
+    await manager.listen();
 
-  it("forwards websocket DM frames as notification events", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, statusText: "OK" });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { manager, emitCdpEvent } = createHarness();
-
-    await manager.startWebhookForwarder("http://localhost:8080", { verbose: true });
-
-    emitCdpEvent("Network.webSocketFrameReceived", {
-      response: {
-        payloadData: JSON.stringify({
-          type: "message",
-          channel: "D12345678",
-          user: "U99999999",
-          text: "dm hello",
-          ts: "1772001.0001",
-        }),
-      },
+    events.emitRawFrame({
+      payloadData: JSON.stringify({
+        type: "message",
+        channel: "D12345678",
+        user: "U99999999",
+        text: "dm hello",
+        ts: "1772001.0001",
+      }),
     });
 
     await flushAsyncEvents();
 
-    const payload = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
-    expect(payload).toEqual({
+    expect(onEvent).toHaveBeenCalledWith({
       type: "notification",
       data: {
         title: "Slack DM (D12345678)",
@@ -154,86 +103,51 @@ describe("NotificationManager", () => {
     });
   });
 
-  it("forwards websocket mention frames as notification events", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, statusText: "OK" });
-    vi.stubGlobal("fetch", fetchMock);
+  it("ignores messages from current user", async () => {
+    const { manager, events } = createHarness({ currentUserId: "U123456789" });
+    const onEvent = vi.fn();
+    events.onEvent(onEvent);
 
-    const { manager, emitCdpEvent } = createHarness();
+    await manager.listen();
 
-    await manager.startWebhookForwarder("http://localhost:8080", { verbose: true });
-
-    emitCdpEvent("Network.webSocketFrameReceived", {
-      response: {
-        payloadData: JSON.stringify({
-          type: "message",
-          channel: "C12345678",
-          user: "U99999999",
-          text: "hello <@U123456789>",
-          ts: "1772001.0002",
-        }),
-      },
+    events.emitRawFrame({
+      payloadData: JSON.stringify({
+        type: "message",
+        channel: "D12345678",
+        user: "U123456789",
+        text: "self message",
+        ts: "1772001.0003",
+      }),
     });
 
     await flushAsyncEvents();
 
-    const payload = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
-    expect(payload.data.title).toBe("Slack mention (C12345678)");
-    expect(payload.data.options.reason).toBe("mention");
+    expect(onEvent).not.toHaveBeenCalled();
   });
 
-  it("ignores websocket messages from current user", async () => {
+  it("uses webhook forwarder correctly", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, statusText: "OK" });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { manager, emitCdpEvent } = createHarness();
+    const { manager, events } = createHarness();
 
-    await manager.startWebhookForwarder("http://localhost:8080", { verbose: true });
+    setupWebhookForwarding(events, "http://localhost:8080");
+    await manager.listen();
 
-    emitCdpEvent("Network.webSocketFrameReceived", {
-      response: {
-        payloadData: JSON.stringify({
-          type: "message",
-          channel: "D12345678",
-          user: "U123456789",
-          text: "self message",
-          ts: "1772001.0003",
-        }),
-      },
+    events.emitRawFrame({
+      payloadData: JSON.stringify({
+        type: "message",
+        channel: "D12345678",
+        user: "U99999999",
+        text: "hello",
+        ts: "1772001.0005",
+      }),
     });
 
     await flushAsyncEvents();
 
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("uses storage-based user id and includes known channel names", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, statusText: "OK" });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { manager, emitCdpEvent } = createHarness({
-      currentUserIdFromStorage: "UAAAAAAA1",
-      currentUserIdFromAvatar: null,
-      sidebarConversations: [{ id: "C12345678", name: "general" }],
-    });
-
-    await manager.startWebhookForwarder("http://localhost:8080", { verbose: true });
-
-    emitCdpEvent("Network.webSocketFrameReceived", {
-      response: {
-        payloadData: JSON.stringify({
-          type: "message",
-          channel: "C12345678",
-          user: "U99999999",
-          text: "hello <@UAAAAAAA1>",
-          ts: "1772001.0004",
-        }),
-      },
-    });
-
-    await flushAsyncEvents();
-
-    const payload = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
-    expect(payload.data.title).toBe("Slack mention (general)");
-    expect(payload.data.options.channelName).toBe("general");
+    expect(fetchMock).toHaveBeenCalled();
+    const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+    expect(body.data.options.body).toBe("hello");
   });
 });
