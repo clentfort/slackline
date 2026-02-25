@@ -10,6 +10,12 @@ export interface WebSocketFrame {
  */
 export class WebSocketInterceptor extends EventEmitter {
   private session: CDPSession | null = null;
+  private readonly frameListener = (event: any) => {
+    const payloadData = event?.response?.payloadData;
+    if (typeof payloadData === "string") {
+      this.emit("frame", { payloadData } as WebSocketFrame);
+    }
+  };
 
   constructor(private readonly page: Page) {
     super();
@@ -29,12 +35,7 @@ export class WebSocketInterceptor extends EventEmitter {
 
       await this.session.send("Network.enable");
 
-      this.session.on("Network.webSocketFrameReceived", (event) => {
-        const payloadData = event?.response?.payloadData;
-        if (typeof payloadData === "string") {
-          this.emit("frame", { payloadData } as WebSocketFrame);
-        }
-      });
+      this.session.on("Network.webSocketFrameReceived", this.frameListener);
 
       this.page.once("close", () => {
         this.session = null;
@@ -50,7 +51,7 @@ export class WebSocketInterceptor extends EventEmitter {
    */
   stop(): void {
     if (this.session) {
-      this.session.removeAllListeners("Network.webSocketFrameReceived");
+      this.session.off("Network.webSocketFrameReceived", this.frameListener);
       this.session = null;
     }
   }
