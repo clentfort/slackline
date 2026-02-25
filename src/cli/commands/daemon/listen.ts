@@ -1,7 +1,7 @@
 import type { Argv, ArgumentsCamelCase } from "yargs";
 import type { GlobalOptions } from "../../index.js";
 import { withSlackClient } from "../../../service/slack/with-slack-client.js";
-import { setupWebhookForwarding } from "../../../service/slack/notifications/webhook-forwarder.js";
+import { setupWebhookForwarding } from "./webhook-forwarder.js";
 
 export const command = "listen";
 export const describe = "Listen for Slack events and forward them to a webhook";

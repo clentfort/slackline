@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotificationManager } from "./notification-manager.js";
 import type { SlackClient } from "../slack-client.js";
 import { SlackEventBus } from "../events/slack-event-bus.js";
-import { setupWebhookForwarding } from "./webhook-forwarder.js";
+import { setupWebhookForwarding } from "../../../cli/commands/daemon/webhook-forwarder.js";
 
 type HarnessOptions = {
   currentUserId?: string | null;

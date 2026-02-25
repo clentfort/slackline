@@ -1,5 +1,5 @@
-import type { SlackEvent } from "../types.js";
-import type { SlackEventBus } from "../events/slack-event-bus.js";
+import type { SlackEvent } from "../../../service/slack/types.js";
+import type { SlackEventBus } from "../../../service/slack/events/slack-event-bus.js";
 
 export interface ForwarderOptions {
   onEvent?: (event: SlackEvent) => void;
