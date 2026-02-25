@@ -5,6 +5,8 @@ import { MessageManager } from "./messages/message-manager.js";
 import { SearchManager } from "./search/search-manager.js";
 import { ProfileManager } from "./profile/profile-manager.js";
 import { NotificationManager } from "./notifications/notification-manager.js";
+import { WorkspaceContext } from "./identity/workspace-context.js";
+import { SlackEventBus } from "./events/slack-event-bus.js";
 import { getConfig } from "./config.js";
 
 export class SlackClient {
@@ -13,8 +15,12 @@ export class SlackClient {
   public readonly search: SearchManager;
   public readonly profile: ProfileManager;
   public readonly notifications: NotificationManager;
+  public readonly workspace: WorkspaceContext;
+  public readonly events: SlackEventBus;
 
   constructor(public readonly page: Page) {
+    this.workspace = new WorkspaceContext(this);
+    this.events = new SlackEventBus();
     this.conversations = new ConversationManager(this);
     this.messages = new MessageManager(this);
     this.search = new SearchManager(this);

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NotificationManager } from "./notification-manager.js";
 import type { SlackClient } from "../slack-client.js";
+import { SlackEventBus } from "../events/slack-event-bus.js";
 
 type HarnessOptions = {
   pageUrl?: string;
@@ -69,7 +70,24 @@ function createHarness(options: HarnessOptions = {}): Harness {
     }),
   };
 
-  const manager = new NotificationManager({ page: mockPage } as unknown as SlackClient);
+  const events = new SlackEventBus();
+
+  const mockWorkspace = {
+    refresh: vi.fn().mockResolvedValue(undefined),
+    getCurrentUserId: vi.fn().mockResolvedValue(currentUserIdFromStorage),
+    getChannelName: vi.fn().mockImplementation((id: string) => {
+      return sidebarConversations.find((c) => c.id === id)?.name;
+    }),
+    setCurrentUserId: vi.fn(),
+  };
+
+  const mockClient = {
+    page: mockPage,
+    events: events,
+    workspace: mockWorkspace,
+  };
+
+  const manager = new NotificationManager(mockClient as unknown as SlackClient);
 
   return {
     manager,

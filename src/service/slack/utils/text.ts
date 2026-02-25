@@ -14,3 +14,11 @@ export function parseUnixSeconds(value: string | null | undefined): number | und
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+export function isSlackUserId(value: string): boolean {
+  return /^U[A-Z0-9]{8,}$/.test(value);
+}
+
+export function isDirectMessageChannel(channel: string): boolean {
+  return /^D[A-Z0-9]+$/.test(channel);
+}
