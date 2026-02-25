@@ -1,4 +1,4 @@
-import type { Worker } from "playwright";
+import type { CDPSession } from "playwright";
 
 import { SlackComponent } from "../slack-component.js";
 import type { SlackEvent } from "./types.js";
@@ -9,349 +9,409 @@ export interface ForwarderOptions {
   verbose?: boolean;
 }
 
-type PageHookArgs = {
-  titleCallback: string;
-  notificationCallback: string;
-  installedFlag: string;
-  swMessageKey: string;
+type SlackWebSocketMessage = {
+  type?: unknown;
+  subtype?: unknown;
+  channel?: unknown;
+  user?: unknown;
+  bot_id?: unknown;
+  text?: unknown;
+  ts?: unknown;
+  hidden?: unknown;
+  ids?: unknown;
 };
 
-type ServiceWorkerHookArgs = {
-  installedFlag: string;
-  messageKey: string;
-};
+const channelMentionPattern = /<!channel>|<!here>|<!everyone>/;
 
-const pageHooksInstalledFlag = "__slacklineNotificationHooksInstalled";
-const serviceWorkerHooksInstalledFlag = "__slacklineServiceWorkerNotificationHooksInstalled";
-const serviceWorkerMessageKey = "__slacklineNotification";
-
-function encodeScriptArg(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
+function isSlackUserId(value: string): boolean {
+  return /^U[A-Z0-9]{8,}$/.test(value);
 }
 
-function buildPageHookScript(args: PageHookArgs): string {
-  return `(function(args) {
-    var win = window;
-    if (win[args.installedFlag]) {
-      return;
-    }
-    win[args.installedFlag] = true;
-
-    var markWrapped = function(fn) {
-      if (typeof fn !== 'function') {
-        return;
-      }
-      try {
-        Object.defineProperty(fn, '__slacklineWrapped', {
-          configurable: true,
-          value: true,
-        });
-      } catch {
-        // ignore if marker cannot be set
-      }
-    };
-
-    var isWrapped = function(fn) {
-      if (typeof fn !== 'function') {
-        return false;
-      }
-      try {
-        return Boolean(fn.__slacklineWrapped);
-      } catch {
-        return false;
-      }
-    };
-
-    var emitTitle = function(title) {
-      try {
-        var callback = win[args.titleCallback];
-        if (typeof callback === 'function') {
-          callback(title);
-        }
-      } catch {
-        // ignore bridge errors
-      }
-    };
-
-    var emitNotification = function(payload) {
-      try {
-        var callback = win[args.notificationCallback];
-        if (typeof callback === 'function') {
-          callback(payload);
-        }
-      } catch {
-        // ignore bridge errors
-      }
-    };
-
-    var lastTitle = document.title;
-    var observer = new MutationObserver(function() {
-      if (document.title !== lastTitle) {
-        lastTitle = document.title;
-        emitTitle(lastTitle);
-      }
-    });
-    observer.observe(document, { subtree: true, childList: true, characterData: true });
-
-    if (typeof win.Notification === 'function' && !isWrapped(win.Notification)) {
-      var originalNotification = win.Notification;
-      var proxiedNotification = new Proxy(originalNotification, {
-        construct: function(target, argsList, newTarget) {
-          var title = argsList[0];
-          var options = argsList[1];
-          emitNotification({ title: title, options: options });
-          return Reflect.construct(target, argsList, newTarget);
-        },
-      });
-
-      markWrapped(proxiedNotification);
-
-      try {
-        Object.defineProperty(win, 'Notification', {
-          configurable: true,
-          writable: true,
-          value: proxiedNotification,
-        });
-      } catch {
-        // ignore if browser disallows overriding
-      }
-    }
-
-    var patchShowNotification = function(target) {
-      var candidate = target;
-      if (!candidate || typeof candidate.showNotification !== 'function') {
-        return;
-      }
-
-      var original = candidate.showNotification;
-      if (isWrapped(original)) {
-        return;
-      }
-
-      var wrapped = function(title, options) {
-        emitNotification({ title: title, options: options });
-        return original.apply(this, [title, options]);
-      };
-
-      markWrapped(wrapped);
-
-      try {
-        candidate.showNotification = wrapped;
-      } catch {
-        // ignore if browser disallows overriding
-      }
-    };
-
-    if (win.ServiceWorkerRegistration && win.ServiceWorkerRegistration.prototype) {
-      patchShowNotification(win.ServiceWorkerRegistration.prototype);
-    }
-
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.addEventListener('message', function(event) {
-        var data = event.data;
-        if (!data || typeof data !== 'object') {
-          return;
-        }
-
-        var payload = data[args.swMessageKey];
-        if (typeof payload !== 'undefined') {
-          emitNotification(payload);
-        }
-      });
-    }
-  })(${encodeScriptArg(args)});`;
+function toStringValue(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function buildServiceWorkerHookScript(args: ServiceWorkerHookArgs): string {
-  return `(function(args) {
-    var scope = self;
-    if (scope[args.installedFlag]) {
-      return;
+function isDirectMessageChannel(channel: string): boolean {
+  return /^D[A-Z0-9]+$/.test(channel);
+}
+
+function textContainsMention(text: string, currentUserId: string | null): boolean {
+  if (currentUserId && text.includes(`<@${currentUserId}>`)) {
+    return true;
+  }
+  return channelMentionPattern.test(text);
+}
+
+function trimNotificationBody(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= 300) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, 297)}...`;
+}
+
+function parseSlackWebSocketMessage(payloadData: string): SlackWebSocketMessage | null {
+  try {
+    const parsed = JSON.parse(payloadData) as SlackWebSocketMessage;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
     }
-    scope[args.installedFlag] = true;
-
-    var markWrapped = function(fn) {
-      if (typeof fn !== 'function') {
-        return;
-      }
-      try {
-        Object.defineProperty(fn, '__slacklineWrapped', {
-          configurable: true,
-          value: true,
-        });
-      } catch {
-        // ignore if marker cannot be set
-      }
-    };
-
-    var isWrapped = function(fn) {
-      if (typeof fn !== 'function') {
-        return false;
-      }
-      try {
-        return Boolean(fn.__slacklineWrapped);
-      } catch {
-        return false;
-      }
-    };
-
-    var emitNotification = function(payload) {
-      try {
-        if (!scope.clients || typeof scope.clients.matchAll !== 'function') {
-          return;
-        }
-
-        scope.clients
-          .matchAll({ type: 'window', includeUncontrolled: true })
-          .then(function(clients) {
-            for (var i = 0; i < clients.length; i += 1) {
-              var client = clients[i];
-              try {
-                client.postMessage({ [args.messageKey]: payload });
-              } catch {
-                // ignore per-client postMessage errors
-              }
-            }
-          })
-          .catch(function() {});
-      } catch {
-        // ignore bridge errors
-      }
-    };
-
-    var patchShowNotification = function(target) {
-      var candidate = target;
-      if (!candidate || typeof candidate.showNotification !== 'function') {
-        return;
-      }
-
-      var original = candidate.showNotification;
-      if (isWrapped(original)) {
-        return;
-      }
-
-      var wrapped = function(title, options) {
-        emitNotification({ title: title, options: options });
-        return original.apply(this, [title, options]);
-      };
-
-      markWrapped(wrapped);
-
-      try {
-        candidate.showNotification = wrapped;
-      } catch {
-        // ignore if browser disallows overriding
-      }
-    };
-
-    if (scope.registration) {
-      patchShowNotification(scope.registration);
-    }
-
-    if (scope.ServiceWorkerRegistration && scope.ServiceWorkerRegistration.prototype) {
-      patchShowNotification(scope.ServiceWorkerRegistration.prototype);
-    }
-  })(${encodeScriptArg(args)});`;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 export class NotificationManager extends SlackComponent {
   private isListening = false;
+  private pageCdpSession: CDPSession | null = null;
+  private currentUserId: string | null = null;
+  private readonly channelNamesById = new Map<string, string>();
 
-  /**
-   * Starts listening for browser notifications and title changes.
-   * @param onEvent Callback function called whenever a notification or title change is detected.
-   */
   async listen(onEvent: (event: SlackEvent) => void): Promise<void> {
     if (this.isListening) {
       throw new Error("Already listening for notifications.");
     }
     this.isListening = true;
 
-    await this.ensureNotificationPermission();
-
-    const titleCallbackName = "slacklineTitleCallback";
-    await this.page.exposeFunction(titleCallbackName, (title: string) => {
-      onEvent({ type: "title", data: { title } });
-    });
-
-    const notificationCallbackName = "slacklineNotificationCallback";
-    await this.page.exposeFunction(notificationCallbackName, (data: any) => {
-      onEvent({ type: "notification", data });
-    });
-
-    const pageHookArgs: PageHookArgs = {
-      titleCallback: titleCallbackName,
-      notificationCallback: notificationCallbackName,
-      installedFlag: pageHooksInstalledFlag,
-      swMessageKey: serviceWorkerMessageKey,
-    };
-
-    const pageHookScript = buildPageHookScript(pageHookArgs);
-    await this.page.addInitScript(pageHookScript);
-    await this.page.evaluate(pageHookScript).catch(() => {});
-
-    await this.installServiceWorkerHooks();
+    const pageCdpSession = await this.ensurePageCdpSession();
+    await this.refreshChannelNameIndex();
+    await this.installWebSocketNotificationStream(pageCdpSession, onEvent);
   }
 
-  private async ensureNotificationPermission(): Promise<void> {
-    const pageUrl = this.page.url();
-    if (!pageUrl) {
-      return;
+  private async ensurePageCdpSession(): Promise<CDPSession> {
+    if (this.pageCdpSession) {
+      return this.pageCdpSession;
     }
 
-    let origin: string;
-    try {
-      origin = new URL(pageUrl).origin;
-    } catch {
-      return;
-    }
+    const context = this.page.context();
+    const session = await context.newCDPSession(this.page).catch((err) => {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      throw new Error(`Could not create CDP session for websocket notifications: ${errorMessage}`);
+    });
 
-    await this.page
-      .context()
-      .grantPermissions(["notifications"], { origin })
-      .catch(() => {});
+    this.pageCdpSession = session;
+    this.page.once("close", () => {
+      if (this.pageCdpSession === session) {
+        this.pageCdpSession = null;
+      }
+    });
 
-    const permission = await this.page
-      .evaluate(() => {
-        if (typeof Notification !== "function") {
-          return "unsupported";
-        }
-        return Notification.permission;
-      })
-      .catch(() => "unknown");
+    return session;
+  }
 
-    if (permission !== "granted") {
+  private async installWebSocketNotificationStream(
+    session: CDPSession,
+    onEvent: (event: SlackEvent) => void,
+  ): Promise<void> {
+    this.currentUserId = await this.resolveCurrentUserId();
+    if (!this.currentUserId) {
       console.warn(
-        `Notification permission is '${permission}' for ${origin}. Browser notifications may not fire.`,
+        "Could not determine current Slack user ID. Mention detection may miss direct mentions.",
       );
     }
-  }
 
-  private async installServiceWorkerHooks(): Promise<void> {
-    const context = this.page.context();
+    await session.send("Network.enable").catch((err) => {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      throw new Error(`Could not enable websocket notification stream: ${errorMessage}`);
+    });
 
-    const patchWorker = async (worker: Worker): Promise<void> => {
-      const args: ServiceWorkerHookArgs = {
-        installedFlag: serviceWorkerHooksInstalledFlag,
-        messageKey: serviceWorkerMessageKey,
-      };
-      const script = buildServiceWorkerHookScript(args);
+    const seenMessageIds = new Set<string>();
 
-      await worker.evaluate(script).catch((err) => {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        console.warn(`Failed to patch service worker notification hooks: ${errorMessage}`);
-      });
-    };
+    session.on("Network.webSocketFrameReceived", (event) => {
+      const payloadData = event?.response?.payloadData;
+      if (typeof payloadData !== "string") {
+        return;
+      }
 
-    await Promise.all(context.serviceWorkers().map((worker) => patchWorker(worker)));
-    context.on("serviceworker", (worker) => {
-      void patchWorker(worker);
+      const payload = parseSlackWebSocketMessage(payloadData);
+      if (!payload) {
+        return;
+      }
+
+      this.maybeLearnCurrentUserIdFromWebSocket(payload);
+
+      const derivedEvent = this.buildNotificationEventFromWebSocketMessage(payload, seenMessageIds);
+      if (derivedEvent) {
+        onEvent(derivedEvent);
+      }
     });
   }
 
-  /**
-   * Starts a webhook forwarder that listens for events and POSTs them to a URL.
-   */
+  private buildNotificationEventFromWebSocketMessage(
+    payload: SlackWebSocketMessage,
+    seenMessageIds: Set<string>,
+  ): SlackEvent | null {
+    const type = toStringValue(payload.type);
+    if (type !== "message") {
+      return null;
+    }
+
+    const subtype = toStringValue(payload.subtype);
+    if (subtype && subtype !== "thread_broadcast") {
+      return null;
+    }
+
+    if (payload.hidden === true) {
+      return null;
+    }
+
+    const channel = toStringValue(payload.channel);
+    if (!channel) {
+      return null;
+    }
+
+    const user = toStringValue(payload.user) || toStringValue(payload.bot_id) || "unknown";
+    if (this.currentUserId && user === this.currentUserId) {
+      return null;
+    }
+
+    const text = toStringValue(payload.text) || "";
+    const ts = toStringValue(payload.ts);
+    const messageId = ts ? `${channel}:${ts}` : `${channel}:${user}:${text}`;
+
+    if (seenMessageIds.has(messageId)) {
+      return null;
+    }
+
+    const isDm = isDirectMessageChannel(channel);
+    const hasMention = textContainsMention(text, this.currentUserId);
+    if (!isDm && !hasMention) {
+      return null;
+    }
+
+    if (seenMessageIds.size > 5000) {
+      seenMessageIds.clear();
+    }
+    seenMessageIds.add(messageId);
+
+    const reason = isDm ? "direct-message" : "mention";
+    const channelName = this.channelNamesById.get(channel);
+    const channelLabel = channelName || channel;
+    const title = isDm ? `Slack DM (${channelLabel})` : `Slack mention (${channelLabel})`;
+    const body = trimNotificationBody(text) || (isDm ? "New direct message" : "New mention");
+
+    return {
+      type: "notification",
+      data: {
+        title,
+        options: {
+          body,
+          source: "websocket",
+          reason,
+          channel,
+          channelName,
+          user,
+          subtype: subtype || null,
+          ts: ts || null,
+        },
+      },
+    };
+  }
+
+  private async resolveCurrentUserId(): Promise<string | null> {
+    const fromStorage = await this.resolveCurrentUserIdFromStorage();
+    if (fromStorage) {
+      return fromStorage;
+    }
+
+    return this.resolveCurrentUserIdFromAvatar();
+  }
+
+  private async resolveCurrentUserIdFromStorage(): Promise<string | null> {
+    return this.page
+      .evaluate(() => {
+        const userIdPattern = /^U[A-Z0-9]{8,}$/;
+        const teamId = window.location.pathname.match(/\/client\/([^/]+)/)?.[1] || null;
+
+        const readFromLocalConfig = (): string | null => {
+          const localConfigRaw = window.localStorage.getItem("localConfig_v2");
+          if (!localConfigRaw) {
+            return null;
+          }
+
+          try {
+            const parsed = JSON.parse(localConfigRaw) as {
+              teams?: Record<string, { user_id?: string }>;
+            };
+            const teams = parsed.teams;
+            if (!teams || typeof teams !== "object") {
+              return null;
+            }
+
+            if (teamId) {
+              const userId = teams[teamId]?.user_id;
+              if (typeof userId === "string" && userIdPattern.test(userId)) {
+                return userId;
+              }
+            }
+
+            for (const team of Object.values(teams)) {
+              const userId = team?.user_id;
+              if (typeof userId === "string" && userIdPattern.test(userId)) {
+                return userId;
+              }
+            }
+          } catch {
+            return null;
+          }
+
+          return null;
+        };
+
+        const readFromStorageKeys = (
+          pattern: RegExp,
+          teamNeedle: string | null,
+        ): string | null => {
+          for (let index = 0; index < window.localStorage.length; index += 1) {
+            const key = window.localStorage.key(index);
+            if (!key) {
+              continue;
+            }
+            if (teamNeedle && !key.includes(teamNeedle)) {
+              continue;
+            }
+
+            const match = key.match(pattern);
+            if (match?.[1] && userIdPattern.test(match[1])) {
+              return match[1];
+            }
+          }
+
+          return null;
+        };
+
+        const teamPersistNeedle = teamId ? `::${teamId}::` : null;
+        const teamExperimentNeedle = teamId ? `-${teamId}-` : null;
+
+        return (
+          readFromLocalConfig() ||
+          readFromStorageKeys(/^persist-v1::T[A-Z0-9]+::(U[A-Z0-9]{8,})::/, teamPersistNeedle) ||
+          readFromStorageKeys(
+            /^experiment-storage-v1-T[A-Z0-9]+-(U[A-Z0-9]{8,})$/,
+            teamExperimentNeedle,
+          ) ||
+          readFromStorageKeys(/^persist-v1::T[A-Z0-9]+::(U[A-Z0-9]{8,})::/, null) ||
+          readFromStorageKeys(/^experiment-storage-v1-T[A-Z0-9]+-(U[A-Z0-9]{8,})$/, null)
+        );
+      })
+      .then((value) => {
+        return typeof value === "string" && isSlackUserId(value) ? value : null;
+      })
+      .catch(() => null);
+  }
+
+  private async resolveCurrentUserIdFromAvatar(): Promise<string | null> {
+    return this.page
+      .evaluate(() => {
+        const image = document.querySelector<HTMLImageElement>('button[data-qa="user-button"] img');
+        if (!image) {
+          return null;
+        }
+
+        const srcsetCandidate = image
+          .getAttribute("srcset")
+          ?.split(",")[0]
+          ?.trim()
+          .split(" ")[0];
+        const candidates = [image.getAttribute("src"), srcsetCandidate];
+
+        for (const candidate of candidates) {
+          if (!candidate) {
+            continue;
+          }
+
+          const match = candidate.match(/-([UW][A-Z0-9]{8,})-/);
+          if (match?.[1]) {
+            return match[1];
+          }
+        }
+
+        return null;
+      })
+      .then((value) => {
+        return typeof value === "string" && isSlackUserId(value) ? value : null;
+      })
+      .catch(() => null);
+  }
+
+  private maybeLearnCurrentUserIdFromWebSocket(payload: SlackWebSocketMessage): void {
+    if (this.currentUserId) {
+      return;
+    }
+
+    const type = toStringValue(payload.type);
+    const subtype = toStringValue(payload.subtype);
+    if (type !== "flannel" || subtype !== "user_subscribe_response") {
+      return;
+    }
+
+    if (!Array.isArray(payload.ids)) {
+      return;
+    }
+
+    const candidates = payload.ids
+      .filter((value): value is string => typeof value === "string")
+      .filter((value) => isSlackUserId(value));
+
+    const uniqueCandidates = [...new Set(candidates)];
+    if (uniqueCandidates.length === 1) {
+      this.currentUserId = uniqueCandidates[0];
+    }
+  }
+
+  private async refreshChannelNameIndex(): Promise<void> {
+    const entries = await this.page
+      .evaluate(() => {
+        const normalize = (value: string | null | undefined): string => {
+          return (value || "").replace(/\s+/g, " ").trim();
+        };
+
+        const channelEntries: Array<{ id: string; name: string }> = [];
+        const seen = new Set<string>();
+
+        const addEntry = (id: string | null | undefined, name: string | null | undefined): void => {
+          const normalizedId = normalize(id);
+          const normalizedName = normalize(name);
+          if (!normalizedId || !normalizedName) {
+            return;
+          }
+          if (!/^[CDG][A-Z0-9]+$/.test(normalizedId) && !/^D[A-Z0-9]+$/.test(normalizedId)) {
+            return;
+          }
+
+          const dedupeKey = `${normalizedId}|${normalizedName}`;
+          if (seen.has(dedupeKey)) {
+            return;
+          }
+          seen.add(dedupeKey);
+          channelEntries.push({ id: normalizedId, name: normalizedName });
+        };
+
+        for (const label of document.querySelectorAll<HTMLElement>('[data-qa^="channel_sidebar_name_"]')) {
+          const anchor = label.closest<HTMLAnchorElement>('a[href*="/client/"]');
+          const href = anchor?.getAttribute("href") || "";
+          const idFromHref = href.match(/\/client\/[^/]+\/([^/?]+)/)?.[1] || null;
+          addEntry(idFromHref, label.textContent);
+        }
+
+        const activeConversationId =
+          window.location.pathname.match(/\/client\/[^/]+\/([^/?]+)/)?.[1] || null;
+        const activeConversationName =
+          normalize(document.querySelector('[data-qa="channel_name"]')?.textContent) ||
+          normalize(document.querySelector('[data-qa="channel_name_button"]')?.textContent) ||
+          null;
+        addEntry(activeConversationId, activeConversationName);
+
+        return channelEntries;
+      })
+      .catch(() => [] as Array<{ id: string; name: string }>);
+
+    for (const entry of entries) {
+      this.channelNamesById.set(entry.id, entry.name);
+    }
+  }
+
   async startWebhookForwarder(webhookUrl: string, options: ForwarderOptions = {}): Promise<void> {
     await this.listen(async (event) => {
       if (options.onEvent) {

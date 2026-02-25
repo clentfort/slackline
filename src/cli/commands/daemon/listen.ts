@@ -30,11 +30,7 @@ export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<
         if (asJson) {
           process.stdout.write(`${JSON.stringify({ timestamp, ...event })}\n`);
         } else {
-          if (event.type === "notification") {
-            process.stdout.write(`[${timestamp}] Notification: ${event.data.title}\n`);
-          } else {
-            process.stdout.write(`[${timestamp}] Title changed: ${event.data.title}\n`);
-          }
+          process.stdout.write(`[${timestamp}] Notification: ${event.data.title}\n`);
         }
       },
       onError: (err) => {

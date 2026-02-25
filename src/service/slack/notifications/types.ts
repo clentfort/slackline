@@ -3,10 +3,4 @@ export interface SlackNotification {
   options?: Record<string, any>;
 }
 
-export interface SlackTitleChange {
-  title: string;
-}
-
-export type SlackEvent =
-  | { type: "notification"; data: SlackNotification }
-  | { type: "title"; data: SlackTitleChange };
+export type SlackEvent = { type: "notification"; data: SlackNotification };
