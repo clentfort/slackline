@@ -1,24 +1,8 @@
-import type { SlackEvent } from "./types.js";
-import { isDirectMessageChannel, isSlackUserId } from "../utils/text.js";
+import { isDirectMessageChannel } from "../utils/text.js";
 import type { WorkspaceContext } from "../identity/workspace-context.js";
-
-type SlackWebSocketMessage = {
-  type?: unknown;
-  subtype?: unknown;
-  channel?: unknown;
-  user?: unknown;
-  bot_id?: unknown;
-  text?: unknown;
-  ts?: unknown;
-  hidden?: unknown;
-  ids?: unknown;
-};
+import type { SlackWebSocketMessage, SlackEvent } from "../types.js";
 
 const channelMentionPattern = /<!channel>|<!here>|<!everyone>/;
-
-function toStringValue(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
 
 function textContainsMention(text: string, currentUserId: string | null): boolean {
   if (currentUserId && text.includes(`<@${currentUserId}>`)) {
@@ -35,20 +19,8 @@ function trimNotificationBody(text: string): string {
   return `${trimmed.slice(0, 297)}...`;
 }
 
-function parseSlackWebSocketMessage(payloadData: string): SlackWebSocketMessage | null {
-  try {
-    const parsed = JSON.parse(payloadData) as SlackWebSocketMessage;
-    if (!parsed || typeof parsed !== "object") {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Processes raw WebSocket messages and determines if they should trigger a notification.
+ * Processes parsed Slack WebSocket messages and determines if they should trigger a notification.
  */
 export class NotificationProcessor {
   private readonly seenMessageIds = new Set<string>();
@@ -56,22 +28,15 @@ export class NotificationProcessor {
   constructor(private readonly context: WorkspaceContext) {}
 
   /**
-   * Processes a raw WebSocket frame and returns a notification event if applicable.
+   * Processes a structured Slack message and returns a notification event if applicable.
    */
-  async process(payloadData: string): Promise<SlackEvent | null> {
-    const payload = parseSlackWebSocketMessage(payloadData);
-    if (!payload) {
-      return null;
-    }
-
-    this.maybeLearnCurrentUserId(payload);
-
-    const type = toStringValue(payload.type);
+  async process(payload: SlackWebSocketMessage): Promise<SlackEvent | null> {
+    const type = payload.type;
     if (type !== "message") {
       return null;
     }
 
-    const subtype = toStringValue(payload.subtype);
+    const subtype = payload.subtype;
     if (subtype && subtype !== "thread_broadcast") {
       return null;
     }
@@ -80,19 +45,19 @@ export class NotificationProcessor {
       return null;
     }
 
-    const channel = toStringValue(payload.channel);
+    const channel = payload.channel;
     if (!channel) {
       return null;
     }
 
-    const user = toStringValue(payload.user) || toStringValue(payload.bot_id) || "unknown";
+    const user = payload.user || payload.bot_id || "unknown";
     const currentUserId = await this.context.getCurrentUserId();
     if (currentUserId && user === currentUserId) {
       return null;
     }
 
-    const text = toStringValue(payload.text) || "";
-    const ts = toStringValue(payload.ts);
+    const text = payload.text || "";
+    const ts = payload.ts;
     const messageId = ts ? `${channel}:${ts}` : `${channel}:${user}:${text}`;
 
     if (this.seenMessageIds.has(messageId)) {
@@ -132,26 +97,5 @@ export class NotificationProcessor {
         },
       },
     };
-  }
-
-  private maybeLearnCurrentUserId(payload: SlackWebSocketMessage): void {
-    const type = toStringValue(payload.type);
-    const subtype = toStringValue(payload.subtype);
-    if (type !== "flannel" || subtype !== "user_subscribe_response") {
-      return;
-    }
-
-    if (!Array.isArray(payload.ids)) {
-      return;
-    }
-
-    const candidates = payload.ids
-      .filter((value): value is string => typeof value === "string")
-      .filter((value) => isSlackUserId(value));
-
-    const uniqueCandidates = [...new Set(candidates)];
-    if (uniqueCandidates.length === 1) {
-      this.context.setCurrentUserId(uniqueCandidates[0]);
-    }
   }
 }

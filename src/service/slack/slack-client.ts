@@ -7,6 +7,7 @@ import { ProfileManager } from "./profile/profile-manager.js";
 import { NotificationManager } from "./notifications/notification-manager.js";
 import { WorkspaceContext } from "./identity/workspace-context.js";
 import { SlackEventBus } from "./events/slack-event-bus.js";
+import { WebSocketInterceptor } from "../playwright/websocket-interceptor.js";
 import { getConfig } from "./config.js";
 
 export class SlackClient {
@@ -17,6 +18,7 @@ export class SlackClient {
   public readonly notifications: NotificationManager;
   public readonly workspace: WorkspaceContext;
   public readonly events: SlackEventBus;
+  private interceptor: WebSocketInterceptor | null = null;
 
   constructor(public readonly page: Page) {
     this.workspace = new WorkspaceContext(this);
@@ -26,6 +28,21 @@ export class SlackClient {
     this.search = new SearchManager(this);
     this.profile = new ProfileManager(this);
     this.notifications = new NotificationManager(this);
+  }
+
+  async startRealTime(): Promise<void> {
+    if (this.interceptor) {
+      return;
+    }
+
+    await this.workspace.refresh();
+
+    this.interceptor = new WebSocketInterceptor(this.page);
+    this.interceptor.on("frame", (frame) => {
+      this.events.emitRawFrame(frame);
+    });
+
+    await this.interceptor.listen();
   }
 
   async navigateToWorkspaceRoot(): Promise<void> {

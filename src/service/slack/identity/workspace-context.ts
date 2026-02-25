@@ -9,10 +9,30 @@ export class WorkspaceContext extends SlackComponent {
   private readonly channelNamesById = new Map<string, string>();
 
   /**
-   * Refreshes all workspace metadata.
+   * Refreshes all workspace metadata and starts listening for real-time updates.
    */
   async refresh(): Promise<void> {
     await Promise.all([this.refreshCurrentUserId(), this.refreshChannelNames()]);
+    this.listenForIdentityChanges();
+  }
+
+  private listenForIdentityChanges(): void {
+    this.client.events.onSlackMessage((payload) => {
+      if (
+        payload.type === "flannel" &&
+        payload.subtype === "user_subscribe_response" &&
+        Array.isArray(payload.ids)
+      ) {
+        const candidates = payload.ids
+          .filter((value): value is string => typeof value === "string")
+          .filter((value) => isSlackUserId(value));
+
+        const uniqueCandidates = [...new Set(candidates)];
+        if (uniqueCandidates.length === 1) {
+          this.setCurrentUserId(uniqueCandidates[0]);
+        }
+      }
+    });
   }
 
   /**
@@ -222,7 +242,7 @@ export class WorkspaceContext extends SlackComponent {
       })
       .catch(() => [] as Array<{ id: string; name: string }>);
 
-    for (const entry of entries) {
+    for (const entry of entries || []) {
       this.channelNamesById.set(entry.id, entry.name);
     }
   }

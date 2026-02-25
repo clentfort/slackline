@@ -1,6 +1,7 @@
 import type { Argv, ArgumentsCamelCase } from "yargs";
 import type { GlobalOptions } from "../../index.js";
 import { withSlackClient } from "../../../service/slack/with-slack-client.js";
+import { setupWebhookForwarding } from "../../../service/slack/notifications/webhook-forwarder.js";
 
 export const command = "listen";
 export const describe = "Listen for Slack events and forward them to a webhook";
@@ -23,7 +24,7 @@ export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<
     process.stdout.write(`Listening for Slack events and forwarding to ${webhook}...\n`);
     process.stdout.write("Press Ctrl+C to stop.\n");
 
-    await client.notifications.startWebhookForwarder(webhook, {
+    setupWebhookForwarding(client.events, webhook, {
       verbose: true,
       onEvent: (event) => {
         const timestamp = new Date().toISOString();
@@ -37,6 +38,8 @@ export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<
         process.stderr.write(`Failed to send webhook: ${err.message}\n`);
       },
     });
+
+    await client.notifications.listen();
 
     // Keep the process running until interrupted
     return new Promise<void>((resolve) => {

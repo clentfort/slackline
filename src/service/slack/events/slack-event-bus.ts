@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { WebSocketFrame } from "../../playwright/websocket-interceptor.js";
-import type { SlackEvent } from "../notifications/types.js";
+import type { SlackWebSocketMessage, SlackEvent } from "../types.js";
 
 /**
  * A central event bus for Slack-related events.
@@ -8,9 +8,15 @@ import type { SlackEvent } from "../notifications/types.js";
 export class SlackEventBus extends EventEmitter {
   /**
    * Emits a raw WebSocket frame received from the browser.
+   * Also parses the frame and emits a 'slack-message' event.
    */
   emitRawFrame(frame: WebSocketFrame): void {
     this.emit("raw-frame", frame);
+
+    const parsed = this.parseSlackWebSocketMessage(frame.payloadData);
+    if (parsed) {
+      this.emit("slack-message", parsed);
+    }
   }
 
   /**
@@ -18,6 +24,13 @@ export class SlackEventBus extends EventEmitter {
    */
   onRawFrame(listener: (frame: WebSocketFrame) => void): this {
     return this.on("raw-frame", listener);
+  }
+
+  /**
+   * Adds a listener for parsed Slack WebSocket messages.
+   */
+  onSlackMessage(listener: (message: SlackWebSocketMessage) => void): this {
+    return this.on("slack-message", listener);
   }
 
   /**
@@ -32,5 +45,17 @@ export class SlackEventBus extends EventEmitter {
    */
   onEvent(listener: (event: SlackEvent) => void): this {
     return this.on("event", listener);
+  }
+
+  private parseSlackWebSocketMessage(payloadData: string): SlackWebSocketMessage | null {
+    try {
+      const parsed = JSON.parse(payloadData);
+      if (!parsed || typeof parsed !== "object") {
+        return null;
+      }
+      return parsed as SlackWebSocketMessage;
+    } catch {
+      return null;
+    }
   }
 }
