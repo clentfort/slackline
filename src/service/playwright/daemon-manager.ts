@@ -28,8 +28,8 @@ type StartDaemonOptions = {
   headless: boolean;
 };
 
-const projectRoot = process.cwd();
-const stateDir = path.resolve(projectRoot, ".slackline");
+export const projectRoot = process.cwd();
+export const stateDir = path.resolve(projectRoot, ".slackline");
 const daemonStatePath = path.resolve(stateDir, "daemon-state.json");
 const chromeProfileDir = path.resolve(stateDir, "chrome-profile");
 const defaultChromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -96,7 +96,25 @@ export async function startSlackDaemon(options: StartDaemonOptions): Promise<Sla
   };
 }
 
+export async function stopListener(): Promise<void> {
+  const pidPath = path.resolve(stateDir, "listener.pid");
+  try {
+    if (existsSync(pidPath)) {
+      const content = await readFile(pidPath, "utf8");
+      const pid = Number.parseInt(content.trim(), 10);
+      if (isPidAlive(pid)) {
+        process.kill(pid, "SIGTERM");
+      }
+      await rm(pidPath, { force: true });
+    }
+  } catch {
+    // Ignore errors during cleanup
+  }
+}
+
 export async function stopSlackDaemon(): Promise<SlackDaemonStatus> {
+  await stopListener();
+
   const state = await readDaemonState();
   if (!state) {
     return {

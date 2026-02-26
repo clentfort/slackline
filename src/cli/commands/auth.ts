@@ -7,10 +7,13 @@ export const describe = "Authenticate and inspect Slack session state";
 
 export const builder = (yargs: Argv<GlobalOptions>) => {
   const commandsDir = fileURLToPath(new URL("./auth", import.meta.url));
-  return yargs.commandDir(commandsDir, {
-    extensions: ["js", "ts"],
-    exclude: /\.test\.(ts|js)$/,
-  });
+  return yargs
+    .commandDir(commandsDir, {
+      extensions: ["js", "ts"],
+      exclude: /\.test\.(ts|js)$/,
+    })
+    .demandCommand(1, "Provide a valid subcommand")
+    .strict();
 };
 
 export const handler = () => {};
