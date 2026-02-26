@@ -9,10 +9,10 @@ export const notificationInjectionScript = (webhookUrl: string) => {
   console.log('[slackline] Injecting notification listener...');
 
   const originalAddEventListener = WebSocket.prototype.addEventListener;
-  WebSocket.prototype.addEventListener = function (type: string, listener: any, options: any) {
+  WebSocket.prototype.addEventListener = function (this: WebSocket, type: string, listener: any, options: any) {
     if (type === 'message') {
       const originalListener = listener;
-      const wrappedListener = async (event: MessageEvent) => {
+      const wrappedListener = (event: any) => {
         try {
           const payload = JSON.parse(event.data);
           if (payload.type === 'message' && !payload.hidden && (payload.subtype === 'thread_broadcast' || !payload.subtype)) {
@@ -22,29 +22,39 @@ export const notificationInjectionScript = (webhookUrl: string) => {
              // We could also check for mentions if we had the user ID
 
              if (isDm || (payload.text && (payload.text.includes('<!channel>') || payload.text.includes('<!here>') || payload.text.includes('<!everyone>')))) {
+                const title = isDm ? `Slack DM (${payload.channel})` : `Slack mention (${payload.channel})`;
+                const body = payload.text || (isDm ? "New direct message" : "New mention");
+
                 fetch(webhookUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     type: 'notification',
                     data: {
-                      title: isDm ? 'New DM' : 'Slack Mention',
+                      title: title,
                       options: {
-                        body: payload.text,
+                        body: body,
+                        source: 'browser-injected',
+                        reason: isDm ? 'direct-message' : 'mention',
                         channel: payload.channel,
                         user: payload.user,
-                        ts: payload.ts,
-                        source: 'browser-injected'
+                        subtype: payload.subtype || null,
+                        ts: payload.ts || null
                       }
                     }
                   })
                 }).catch(() => {});
              }
           }
-        } catch (e) {
+        } catch {
           // Ignore
         }
-        return originalListener.apply(this, [event]);
+
+        if (typeof originalListener === 'function') {
+          return originalListener.apply(this, [event]);
+        } else if (originalListener && typeof originalListener.handleEvent === 'function') {
+          return originalListener.handleEvent(event);
+        }
       };
       return originalAddEventListener.call(this, type, wrappedListener, options);
     }

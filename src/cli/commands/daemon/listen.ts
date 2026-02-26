@@ -22,12 +22,13 @@ export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<
   const { json: asJson, webhook, verbose } = argv;
 
   if (!verbose) {
-    await withSlackClient({ skipLoginCheck: false }, async (client) => {
+    await withSlackClient({ skipLoginCheck: false, keepContextOpen: true }, async (client) => {
       process.stdout.write(`Attaching persistent listener to Slack page for ${webhook}...\n`);
-      await client.page.evaluate(notificationInjectionScript, webhook);
-      // We also add it as an init script to survive reloads
+      // Add init script to survive reloads and apply to new pages
       await client.page.context().addInitScript(notificationInjectionScript, webhook);
-      process.stdout.write("Listener attached. You can exit now (or it will exit automatically).\n");
+      // Reload to ensure the hook is active for the current page
+      await client.page.reload({ waitUntil: "domcontentloaded" });
+      process.stdout.write("Listener attached and page reloaded. You can exit now.\n");
     });
     return;
   }

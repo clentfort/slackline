@@ -9,6 +9,7 @@ export type SlackBrowserOptions = {
 
 type WithSlackContextOptions = SlackBrowserOptions & {
   headless: boolean;
+  keepContextOpen?: boolean;
 };
 
 export async function withSlackContext<T>(
@@ -43,7 +44,10 @@ export async function withSlackContext<T>(
   try {
     return await callback({ context, page });
   } finally {
-    // We do NOT close the context or browser here, to keep the daemon and its tabs running.
-    // The CDP connection will be dropped when the process exits.
+    if (!options.keepContextOpen) {
+      // We close the context but NOT the browser, to keep the daemon running.
+      // The CDP connection will be dropped when the process exits.
+      await context.close().catch(() => {});
+    }
   }
 }

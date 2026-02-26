@@ -5,6 +5,7 @@ import { getConfig } from "./config.js";
 export type WithSlackClientOptions = {
   headless?: boolean;
   skipLoginCheck?: boolean;
+  keepContextOpen?: boolean;
 };
 
 export async function withSlackClient<T>(
@@ -17,6 +18,7 @@ export async function withSlackClient<T>(
   return withSlackContext(
     {
       headless: options.headless ?? true,
+      keepContextOpen: options.keepContextOpen,
       ...browser,
     },
     async ({ page }) => {
