@@ -58,7 +58,7 @@ export function createParser(options: { skipCommandDir?: boolean } = {}): Argv<G
   if (!options.skipCommandDir) {
     parser.commandDir(commandsDir, {
       extensions: ["js", "ts"],
-      exclude: /\.test\.(ts|js)$/,
+      exclude: /\.test\.(ts|js)|\.d\.ts$/,
     });
   }
 

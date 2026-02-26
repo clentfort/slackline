@@ -7,10 +7,13 @@ export const describe = "Manage a long-running Chrome daemon for CLI reuse";
 
 export const builder = (yargs: Argv<GlobalOptions>) => {
   const commandsDir = fileURLToPath(new URL("./daemon", import.meta.url));
-  return yargs.commandDir(commandsDir, {
-    extensions: ["js", "ts"],
-    exclude: /\.test\.(ts|js)$/,
-  });
+  return yargs
+    .commandDir(commandsDir, {
+      extensions: ["js", "ts"],
+      exclude: /\.test\.(ts|js)|\.d\.ts$/,
+    })
+    .demandCommand(1, "Provide a valid subcommand")
+    .strict();
 };
 
 export const handler = () => {};
