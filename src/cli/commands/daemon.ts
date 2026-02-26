@@ -10,7 +10,7 @@ export const builder = (yargs: Argv<GlobalOptions>) => {
   return yargs
     .commandDir(commandsDir, {
       extensions: ["js", "ts"],
-      exclude: /\.test\.(ts|js)$/,
+      exclude: /\.test\.(ts|js)|\.d\.ts$/,
     })
     .demandCommand(1, "Provide a valid subcommand")
     .strict();

@@ -1,11 +1,8 @@
-import { spawn } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { Argv, ArgumentsCamelCase } from "yargs";
-import { stateDir } from "../../../service/playwright/daemon-manager.js";
 import type { GlobalOptions } from "../../index.js";
 import { withSlackClient } from "../../../service/slack/with-slack-client.js";
 import { setupWebhookForwarding } from "./webhook-forwarder.js";
+import { notificationInjectionScript } from "../../../service/slack/notifications/browser-scripts.js";
 
 export const command = "listen <webhook>";
 export const describe = "Listen for Slack events and forward them to a webhook";
@@ -24,29 +21,15 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
 export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<void> {
   const { json: asJson, webhook, verbose } = argv;
 
-  const isBackground = process.env.SLACKLINE_BACKGROUND === "true";
-
-  if (!verbose && !isBackground) {
-    const pidPath = path.resolve(stateDir, "listener.pid");
-
-    await mkdir(stateDir, { recursive: true });
-
-    const child = spawn(process.argv[0], [...process.argv.slice(1)], {
-      detached: true,
-      stdio: "ignore",
-      env: {
-        ...process.env,
-        SLACKLINE_BACKGROUND: "true",
-      },
+  if (!verbose) {
+    await withSlackClient({ skipLoginCheck: false }, async (client) => {
+      process.stdout.write(`Attaching persistent listener to Slack page for ${webhook}...\n`);
+      await client.page.evaluate(notificationInjectionScript, webhook);
+      // We also add it as an init script to survive reloads
+      await client.page.context().addInitScript(notificationInjectionScript, webhook);
+      process.stdout.write("Listener attached. You can exit now (or it will exit automatically).\n");
     });
-
-    if (child.pid) {
-      await writeFile(pidPath, child.pid.toString(), "utf8");
-      process.stdout.write(`Listener started in background (PID: ${child.pid})\n`);
-    }
-
-    child.unref();
-    process.exit(0);
+    return;
   }
 
   await withSlackClient({ skipLoginCheck: false }, async (client) => {
