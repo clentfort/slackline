@@ -2,7 +2,6 @@ import type { Argv, ArgumentsCamelCase } from "yargs";
 import type { GlobalOptions } from "../../index.js";
 import { withSlackClient } from "../../../service/slack/with-slack-client.js";
 import { setupWebhookForwarding } from "./webhook-forwarder.js";
-import { notificationInjectionScript } from "../../../service/slack/notifications/browser-scripts.js";
 
 export const command = "listen <webhook>";
 export const describe = "Listen for Slack events and forward them to a webhook";
@@ -20,18 +19,6 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
 
 export async function handler(argv: ArgumentsCamelCase<ListenOptions>): Promise<void> {
   const { json: asJson, webhook, verbose } = argv;
-
-  if (!verbose) {
-    await withSlackClient({ skipLoginCheck: false, keepContextOpen: true }, async (client) => {
-      process.stdout.write(`Attaching persistent listener to Slack page for ${webhook}...\n`);
-      // Add init script to survive reloads and apply to new pages
-      await client.page.context().addInitScript(notificationInjectionScript, webhook);
-      // Reload to ensure the hook is active for the current page
-      await client.page.reload({ waitUntil: "domcontentloaded" });
-      process.stdout.write("Listener attached and page reloaded. You can exit now.\n");
-    });
-    return;
-  }
 
   await withSlackClient({ skipLoginCheck: false }, async (client) => {
     if (verbose) {
