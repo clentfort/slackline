@@ -1,7 +1,11 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import path from "node:path";
+import {
+  getChromeProfileDir,
+  getDaemonStatePath,
+  getSlacklineDir,
+} from "../slack/utils/paths.js";
 
 export type SlackDaemonState = {
   pid?: number;
@@ -28,10 +32,9 @@ type StartDaemonOptions = {
   headless: boolean;
 };
 
-const projectRoot = process.cwd();
-const stateDir = path.resolve(projectRoot, ".slackline");
-const daemonStatePath = path.resolve(stateDir, "daemon-state.json");
-const chromeProfileDir = path.resolve(stateDir, "chrome-profile");
+const stateDir = getSlacklineDir();
+const daemonStatePath = getDaemonStatePath();
+const chromeProfileDir = getChromeProfileDir();
 const defaultChromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 export async function startSlackDaemon(options: StartDaemonOptions): Promise<SlackDaemonStatus> {

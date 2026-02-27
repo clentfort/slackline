@@ -5,7 +5,6 @@ import type { GlobalOptions } from "./index.js";
 describe("browserOptionsFromArgv", () => {
   const defaultGlobalOptions: GlobalOptions = {
     verbose: false,
-    workspaceUrl: "https://app.slack.com/client/T123/C456",
     cdpUrl: "http://127.0.0.1:9222",
     json: false,
   };
