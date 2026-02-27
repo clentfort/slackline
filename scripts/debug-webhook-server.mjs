@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { createServer } from "node:http";
 
 const argPort = Number.parseInt(process.argv[2] ?? "", 10);
