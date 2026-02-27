@@ -9,7 +9,6 @@ import { browserOptionsFromArgv } from "./browser-options.js";
 
 export interface GlobalOptions {
   verbose: boolean;
-  cdpUrl: string;
   json: boolean;
   chromePath?: string;
 }
@@ -24,13 +23,6 @@ export function createParser(options: { skipCommandDir?: boolean } = {}): Argv<G
       type: "boolean",
       default: false,
       describe: "Enable verbose CLI logging",
-      global: true,
-    })
-    .option("cdpUrl", {
-      alias: "cdp-url",
-      type: "string",
-      default: "http://127.0.0.1:9222",
-      describe: "CDP endpoint URL for the browser daemon",
       global: true,
     })
     .option("chromePath", {

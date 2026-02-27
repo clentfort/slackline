@@ -10,9 +10,9 @@ interface StatusOptions extends GlobalOptions {}
 export const builder = (yargs: Argv<GlobalOptions>) => yargs;
 
 export async function handler(argv: ArgumentsCamelCase<StatusOptions>): Promise<void> {
-  const { cdpUrl, json: asJson } = argv;
+  const { json: asJson } = argv;
 
-  const status = await getSlackDaemonStatus({ cdpUrl });
+  const status = await getSlackDaemonStatus();
 
   if (asJson) {
     process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);

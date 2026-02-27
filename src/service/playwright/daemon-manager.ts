@@ -27,7 +27,7 @@ export type SlackDaemonStatus = {
 };
 
 type StartDaemonOptions = {
-  cdpUrl: string;
+  cdpUrl?: string;
   chromePath?: string;
   headless: boolean;
 };
@@ -38,7 +38,7 @@ const chromeProfileDir = getChromeProfileDir();
 const defaultChromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 export async function startSlackDaemon(options: StartDaemonOptions): Promise<SlackDaemonStatus> {
-  const cdpUrl = normalizeCdpUrl(options.cdpUrl);
+  const cdpUrl = options.cdpUrl || (await readDaemonState())?.cdpUrl || defaultCdpUrl();
   const existing = await getSlackDaemonStatus({ cdpUrl });
   if (existing.running) {
     if (options.headless === existing.headless) {
@@ -227,13 +227,13 @@ function normalizeCdpUrl(rawUrl: string): string {
 }
 
 function defaultCdpUrl(): string {
-  return "http://127.0.0.1:9222";
+  return "http://127.0.0.1:9224";
 }
 
 function parseCdpEndpoint(cdpUrl: string): { host: string; port: number } {
   const parsed = new URL(cdpUrl);
   const host = parsed.hostname || "127.0.0.1";
-  const port = Number.parseInt(parsed.port || "9222", 10);
+  const port = Number.parseInt(parsed.port || "9224", 10);
 
   if (!Number.isFinite(port)) {
     throw new Error(`Invalid CDP URL port: ${cdpUrl}`);

@@ -18,10 +18,9 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
   });
 
 export async function handler(argv: ArgumentsCamelCase<StartOptions>): Promise<void> {
-  const { cdpUrl, json: asJson, headless, chromePath } = argv;
+  const { json: asJson, headless, chromePath } = argv;
 
   const status = await startSlackDaemon({
-    cdpUrl,
     headless,
     chromePath,
   });

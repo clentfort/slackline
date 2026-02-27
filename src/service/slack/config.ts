@@ -8,9 +8,7 @@ export type SlackConfig = {
 };
 
 const defaultConfig: SlackConfig = {
-  browser: {
-    cdpUrl: process.env.SLACKLINE_CDP_URL ?? "http://127.0.0.1:9222",
-  },
+  browser: {},
 };
 
 let currentConfig: SlackConfig | null = null;

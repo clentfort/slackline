@@ -32,7 +32,7 @@ export const builder = (yargs: Argv<GlobalOptions>) =>
     });
 
 export async function handler(argv: ArgumentsCamelCase<LoginOptions>): Promise<void> {
-  const { cdpUrl, timeoutSeconds, manualConfirm, chromePath } = argv;
+  const { timeoutSeconds, manualConfirm, chromePath } = argv;
   let { workspaceUrl } = argv;
 
   // Basic validation and protocol addition
@@ -55,7 +55,6 @@ export async function handler(argv: ArgumentsCamelCase<LoginOptions>): Promise<v
 
   // Ensure the daemon is running in headed mode for interactive login
   await startSlackDaemon({
-    cdpUrl,
     headless: false,
     chromePath,
   });
@@ -72,7 +71,6 @@ export async function handler(argv: ArgumentsCamelCase<LoginOptions>): Promise<v
 
   // Switch back to headless mode after login
   await startSlackDaemon({
-    cdpUrl,
     headless: true,
     chromePath,
   });
