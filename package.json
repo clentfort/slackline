@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "description": "CLI automation for Slack via Playwright",
   "bin": {
-    "slackline": "dist/cli.js"
+    "slackline": "bin/slackline.js"
   },
   "type": "module",
   "scripts": {
     "build": "rm -rf dist && tsgo",
-    "dev": "tsx src/cli.ts",
+    "dev": "tsx src/cli/index.ts",
     "debug:webhook": "node scripts/debug-webhook-server.mjs",
     "format": "oxfmt .",
     "lint": "oxlint .",

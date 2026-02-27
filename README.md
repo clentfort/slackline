@@ -105,7 +105,7 @@ Note: daemon and persistent mode share the same profile. Use one mode at a time 
 Equivalent command:
 
 ```bash
-npx tsx src/cli.ts auth login --workspace-url "https://app.slack.com/client/T0AGXBKFV4H/C0AG30W2SG7?entry_point=nav_menu"
+npx tsx src/cli/index.ts auth login --workspace-url "https://app.slack.com/client/T0AGXBKFV4H/C0AG30W2SG7?entry_point=nav_menu"
 ```
 
 ## Search

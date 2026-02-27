@@ -12,15 +12,15 @@ This document provides guidelines for AI coding agents working in this repositor
 
 ## Build/Lint/Test Commands
 
-| Command                     | Description                                  |
-|-----------------------------|----------------------------------------------|
-| `npm run build`             | Build with `tsgo` (TypeScript native compiler) |
-| `npm run dev`               | Run in dev mode with `tsx src/cli.ts`        |
-| `npm run lint`              | Lint with `oxlint .`                         |
-| `npm run format`            | Format with `oxfmt .`                        |
-| `npm run typecheck`         | Type check with `tsgo --noEmit`              |
-| `npm test`                  | Run all tests with `vitest run`              |
-| `npm run playwright:install`| Install Chrome for Playwright                |
+| Command                      | Description                                    |
+| ---------------------------- | ---------------------------------------------- |
+| `npm run build`              | Build with `tsgo` (TypeScript native compiler) |
+| `npm run dev`                | Run in dev mode with `tsx src/cli/index.ts`    |
+| `npm run lint`               | Lint with `oxlint .`                           |
+| `npm run format`             | Format with `oxfmt .`                          |
+| `npm run typecheck`          | Type check with `tsgo --noEmit`                |
+| `npm test`                   | Run all tests with `vitest run`                |
+| `npm run playwright:install` | Install Chrome for Playwright                  |
 
 ### Running a Single Test
 
@@ -44,9 +44,8 @@ lint-staged runs: `oxfmt` on all files, `oxlint --fix` on `.js`/`.ts` files
 
 ```
 src/
-├── cli.ts                    # Entry point
 ├── cli/
-│   ├── index.ts              # CLI parser with yargs
+│   ├── index.ts              # CLI parser and entry point with yargs
 │   ├── browser-options.ts    # Browser option parsing
 │   └── commands/             # CLI commands (auth, daemon, messages, post, search)
 └── service/
