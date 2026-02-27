@@ -5,31 +5,21 @@ import type { GlobalOptions } from "./index.js";
 describe("browserOptionsFromArgv", () => {
   const defaultGlobalOptions: GlobalOptions = {
     verbose: false,
-    workspaceUrl: "https://app.slack.com/client/T123/C456",
-    cdpUrl: "http://127.0.0.1:9222",
     json: false,
   };
 
   it("should correctly transform default options", () => {
     const result = browserOptionsFromArgv(defaultGlobalOptions);
     expect(result).toEqual({
-      cdpUrl: "http://127.0.0.1:9222",
+      chromePath: undefined,
     });
   });
 
-  it("should trim cdpUrl", () => {
+  it("should include chromePath when provided", () => {
     const result = browserOptionsFromArgv({
       ...defaultGlobalOptions,
-      cdpUrl: "  http://localhost:9222  ",
+      chromePath: "/path/to/chrome",
     });
-    expect(result.cdpUrl).toBe("http://localhost:9222");
-  });
-
-  it("should return undefined for empty cdpUrl after trim", () => {
-    const result = browserOptionsFromArgv({
-      ...defaultGlobalOptions,
-      cdpUrl: "   ",
-    });
-    expect(result.cdpUrl).toBeUndefined();
+    expect(result.chromePath).toBe("/path/to/chrome");
   });
 });

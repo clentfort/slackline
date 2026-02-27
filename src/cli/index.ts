@@ -4,14 +4,11 @@ import { hideBin } from "yargs/helpers";
 import yargs from "yargs/yargs";
 import type { Argv } from "yargs";
 
-import { defaultSlackWorkspaceUrl } from "../service/slack/defaults.js";
 import { setConfig } from "../service/slack/config.js";
 import { browserOptionsFromArgv } from "./browser-options.js";
 
 export interface GlobalOptions {
   verbose: boolean;
-  workspaceUrl: string;
-  cdpUrl: string;
   json: boolean;
   chromePath?: string;
 }
@@ -26,20 +23,6 @@ export function createParser(options: { skipCommandDir?: boolean } = {}): Argv<G
       type: "boolean",
       default: false,
       describe: "Enable verbose CLI logging",
-      global: true,
-    })
-    .option("workspaceUrl", {
-      alias: "workspace-url",
-      type: "string",
-      describe: "Slack workspace/channel URL to use as entry point",
-      default: defaultSlackWorkspaceUrl,
-      global: true,
-    })
-    .option("cdpUrl", {
-      alias: "cdp-url",
-      type: "string",
-      default: "http://127.0.0.1:9222",
-      describe: "CDP endpoint URL for the browser daemon",
       global: true,
     })
     .option("chromePath", {
@@ -65,7 +48,6 @@ export function createParser(options: { skipCommandDir?: boolean } = {}): Argv<G
   parser
     .middleware((argv) => {
       setConfig({
-        workspaceUrl: argv.workspaceUrl as string,
         browser: browserOptionsFromArgv(argv as unknown as GlobalOptions),
       });
     })

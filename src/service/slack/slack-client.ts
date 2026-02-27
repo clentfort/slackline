@@ -47,6 +47,11 @@ export class SlackClient {
 
   async navigateToWorkspaceRoot(): Promise<void> {
     const workspaceUrl = getConfig().workspaceUrl;
+    if (!workspaceUrl) {
+      throw new Error(
+        "No Slack workspace URL configured. Run `slackline auth login <workspace-url>` first.",
+      );
+    }
     await this.page.goto(workspaceUrl, { waitUntil: "domcontentloaded" });
   }
 

@@ -4,9 +4,8 @@ import { getConfig, setConfig } from "./config.js";
 describe("config", () => {
   it("should have default values", () => {
     const config = getConfig();
-    // Depending on env vars in the environment, these might vary,
-    // but in a clean test run they should be defaults.
-    expect(config.workspaceUrl).toBeDefined();
+    // workspaceUrl is now undefined by default
+    expect(config.workspaceUrl).toBeUndefined();
     expect(config.browser).toBeDefined();
   });
 
