@@ -1,10 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { getConfig, setConfig } from "./config.js";
+import { describe, it, expect, beforeEach } from "vitest";
+import { getConfig, resetConfigForTests, setConfig } from "./config.js";
 
 describe("config", () => {
+  beforeEach(() => {
+    resetConfigForTests();
+  });
+
   it("should have default values", () => {
     const config = getConfig();
-    // workspaceUrl is now undefined by default
     expect(config.workspaceUrl).toBeUndefined();
     expect(config.browser).toBeDefined();
   });

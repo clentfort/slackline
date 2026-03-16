@@ -27,4 +27,30 @@ describe("WorkspaceContext", () => {
     const userId = await context.getCurrentUserId();
     expect(userId).toBe("U99988877");
   });
+
+  it("learns channel names from websocket payloads", async () => {
+    const events = new SlackEventBus();
+    const mockClient = {
+      events,
+      page: {
+        evaluate: vi.fn().mockResolvedValue(null),
+        url: vi.fn().mockReturnValue("https://app.slack.com/client/T12345678/C11111111"),
+      },
+    };
+
+    const context = new WorkspaceContext(mockClient as unknown as SlackClient);
+    await context.refresh();
+
+    events.emitRawFrame({
+      payloadData: JSON.stringify({
+        type: "channel_joined",
+        channel: {
+          id: "C12345678",
+          name: "team-backend",
+        },
+      }),
+    });
+
+    expect(context.getChannelName("C12345678")).toBe("team-backend");
+  });
 });

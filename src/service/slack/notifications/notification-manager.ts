@@ -68,7 +68,7 @@ export class NotificationManager extends SlackComponent {
       return null;
     }
 
-    const channel = payload.channel;
+    const channel = typeof payload.channel === "string" ? payload.channel : undefined;
     if (!channel) {
       return null;
     }

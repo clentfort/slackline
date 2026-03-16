@@ -3,9 +3,14 @@ import path from "node:path";
 
 /**
  * Returns the base directory for slackline data and configuration.
- * For now, we use ~/.config/slackline across all platforms as requested.
+ * Can be overridden with PI_SLACKLINE_DIR (used by tests to isolate state).
  */
 export function getSlacklineDir(): string {
+  const override = process.env.PI_SLACKLINE_DIR?.trim();
+  if (override) {
+    return override;
+  }
+
   return path.join(os.homedir(), ".config", "slackline");
 }
 
@@ -19,4 +24,8 @@ export function getDaemonStatePath(): string {
 
 export function getChromeProfileDir(): string {
   return path.join(getSlacklineDir(), "chrome-profile");
+}
+
+export function getConversationMappingsPath(): string {
+  return path.join(getSlacklineDir(), "conversation-mappings.json");
 }

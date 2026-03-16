@@ -5,6 +5,7 @@ import { getConfig } from "./config.js";
 export type WithSlackClientOptions = {
   headless?: boolean;
   skipLoginCheck?: boolean;
+  startRealTime?: boolean;
 };
 
 export async function withSlackClient<T>(
@@ -26,6 +27,11 @@ export async function withSlackClient<T>(
 
       if (!options.skipLoginCheck) {
         await client.ensureLoggedIn();
+      }
+
+      const shouldStartRealTime = options.startRealTime ?? !options.skipLoginCheck;
+      if (shouldStartRealTime) {
+        await client.startRealTime();
       }
 
       return callback(client);

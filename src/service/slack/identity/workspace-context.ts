@@ -1,3 +1,9 @@
+import {
+  getKnownConversationName,
+  rememberKnownConversations,
+  workspaceKeyFromUrl,
+} from "./conversation-map-store.js";
+import { extractConversationEntriesFromSlackMessage } from "./ws-conversation-extractor.js";
 import { SlackComponent } from "../slack-component.js";
 import { isSlackUserId } from "../utils/text.js";
 
@@ -32,6 +38,11 @@ export class WorkspaceContext extends SlackComponent {
           this.setCurrentUserId(uniqueCandidates[0]);
         }
       }
+
+      const extracted = extractConversationEntriesFromSlackMessage(payload);
+      if (extracted.length > 0) {
+        this.mergeConversationEntries(extracted);
+      }
     });
   }
 
@@ -58,7 +69,20 @@ export class WorkspaceContext extends SlackComponent {
    * Gets the name of a channel by its ID.
    */
   getChannelName(channelId: string): string | undefined {
-    return this.channelNamesById.get(channelId);
+    const inMemory = this.channelNamesById.get(channelId);
+    if (inMemory) {
+      return inMemory;
+    }
+
+    const workspaceKey = this.resolveWorkspaceKey();
+    if (!workspaceKey) {
+      return undefined;
+    }
+
+    return getKnownConversationName({
+      workspaceKey,
+      conversationId: channelId,
+    });
   }
 
   /**
@@ -242,8 +266,44 @@ export class WorkspaceContext extends SlackComponent {
       })
       .catch(() => [] as Array<{ id: string; name: string }>);
 
-    for (const entry of entries || []) {
+    const normalizedEntries = entries || [];
+
+    if (normalizedEntries.length === 0) {
+      return;
+    }
+
+    this.mergeConversationEntries(
+      normalizedEntries.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        type: entry.id.startsWith("D") ? "dm" : "channel",
+      })),
+    );
+  }
+
+  private mergeConversationEntries(
+    entries: Array<{ id: string; name: string; type: "channel" | "dm" | "unknown" }>,
+  ): void {
+    for (const entry of entries) {
       this.channelNamesById.set(entry.id, entry.name);
     }
+
+    const workspaceKey = this.resolveWorkspaceKey();
+    if (!workspaceKey) {
+      return;
+    }
+
+    rememberKnownConversations({
+      workspaceKey,
+      entries,
+    });
+  }
+
+  private resolveWorkspaceKey(): string | undefined {
+    if (typeof this.page.url !== "function") {
+      return undefined;
+    }
+
+    return workspaceKeyFromUrl(this.page.url());
   }
 }

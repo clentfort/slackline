@@ -1,7 +1,7 @@
 export interface SlackWebSocketMessage {
   type?: string;
   subtype?: string;
-  channel?: string;
+  channel?: string | Record<string, unknown>;
   user?: string;
   bot_id?: string;
   text?: string;

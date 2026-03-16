@@ -62,3 +62,7 @@ export function getConfig(): SlackConfig {
   }
   return currentConfig;
 }
+
+export function resetConfigForTests(): void {
+  currentConfig = null;
+}

@@ -32,11 +32,10 @@ export class SearchManager extends SlackComponent {
       .catch(() => {});
 
     const records = await this.page.locator('[data-qa="search_result"]').evaluateAll(
-      (nodes, { query, helpers }) => {
+      (nodes, { helpers }) => {
         const normalize = new Function(`return ${helpers.normalize}`)();
         const parseUnixSeconds = new Function(`return ${helpers.parseUnixSeconds}`)();
 
-        const queryLower = query.toLowerCase();
         const seen = new Set<string>();
         const items: any[] = [];
 
@@ -75,12 +74,8 @@ export class SearchManager extends SlackComponent {
             normalize(node.querySelector(".c-message__body")?.textContent) ||
             rawText;
 
-          const messageMatchesQuery =
-            rawText.toLowerCase().includes(queryLower) ||
-            message.toLowerCase().includes(queryLower);
-
           const dedupeKey = [user ?? "", channel ?? "", timestampLabel ?? "", message].join("|");
-          if (!messageMatchesQuery || seen.has(dedupeKey)) {
+          if (seen.has(dedupeKey)) {
             continue;
           }
 
@@ -98,7 +93,7 @@ export class SearchManager extends SlackComponent {
 
         return items;
       },
-      { query, helpers: BROWSER_HELPERS },
+      { helpers: BROWSER_HELPERS },
     );
 
     return {
