@@ -140,25 +140,37 @@ JSON fields per hit:
 Get the latest 20 visible messages (default):
 
 ```bash
-node dist/cli/index.js messages --target sozial
+node dist/cli/index.js messages sozial
 ```
 
 Custom count:
 
 ```bash
-node dist/cli/index.js messages --target sozial --limit 50
+node dist/cli/index.js messages sozial --limit 50
 ```
 
 DM target:
 
 ```bash
-node dist/cli/index.js messages --target christian_slack.com --limit 20
+node dist/cli/index.js messages christian_slack.com --limit 20
+```
+
+Load a specific message from a Slack permalink with context:
+
+```bash
+node dist/cli/index.js messages "https://example.slack.com/archives/C0406V926/p1772531498347919" --before 5 --after 5
+```
+
+Also include thread messages (best effort):
+
+```bash
+node dist/cli/index.js messages "https://example.slack.com/archives/C0406V926/p1772531498347919" --thread --thread-limit 100
 ```
 
 JSON output:
 
 ```bash
-node dist/cli/index.js messages --target sozial --json
+node dist/cli/index.js messages sozial --json
 ```
 
 ## Post a message
